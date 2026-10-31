@@ -47,7 +47,7 @@ def corbeau_attrapable():
     for i, niv in enumerate(NIVEAUX):
         p = pa.Partie(i)
         surfaces = [(c * T, (c + 1) * T, r * T) for r in range(pa.PLAFOND, RANGS)
-                    for c in range(p.cols) if p.grille[r][c] in "#-" and p.grille[r - 1][c] != "#"]
+                    for c in range(p.cols) if p.grille[r][c] in "#-=" and p.grille[r - 1][c] != "#"]
         perdus = []
         for ch in p.choses:
             ch.transformer()

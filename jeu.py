@@ -166,8 +166,9 @@ class Jeu:
         """Les feux d'artifice : une fusée monte en sifflant, éclate en étincelles qui
         ralentissent, retombent et s'éteignent."""
         if random.random() < 1.1 * DT:
-            x = random.uniform(220, 1060)
-            self.fusees.append([x, 600.0, random.uniform(-40, 40), -random.uniform(560, 680),
+            x = random.uniform(160, 1120)
+            penche = random.uniform(80, 240) * (1 if x < L / 2 else -1) * random.choice((1, 1, -0.5))
+            self.fusees.append([x, 600.0, penche, -random.uniform(560, 680),
                                 random.uniform(90, 260), random.choice(FESTIF)])
             self.son("fusee")
         for f in self.fusees:
@@ -196,8 +197,9 @@ class Jeu:
         self.feux = [f for f in self.feux if f[4] > 0]
 
     def dessiner_feux(self, e):
-        for x, y, *_ in self.fusees:
-            dessin.line(e, (255, 230, 170), (x, y), (x, y + 16), 3)
+        for x, y, vx, vy, *_ in self.fusees:  # la fusée, penchée dans le sens où elle file
+            v = math.hypot(vx, vy) or 1
+            dessin.line(e, (255, 230, 170), (x, y), (x - vx / v * 16, y - vy / v * 16), 3)
         for x, y, vx, vy, vie, depart, c in self.feux:
             u = vie / depart  # 1 au début, 0 quand elle s'éteint
             couleur = melange((60, 30, 50), melange(c, BLANC, 0.5 * u * u), min(1.0, u * 1.5))
@@ -467,7 +469,7 @@ class Jeu:
         elif self.etat == "fin":
             self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
             self.dessiner_feux(e)
-            poser(e, anime("vampire", self.t), 640, 236 - 8 * abs(math.sin(self.t * 3)), echelle=0.8)
+            self.dessiner_danse(e)
             ecrire(e, "Tout le Bled est en fête !", 76, OR, centre=(L // 2, 620))
             ecrire(e, f"En {palmares.duree(self.chrono)} !   "
                       f"{BOUTONS['saut'].capitalize()} : le tableau d'honneur", 32, BLANC, centre=(L // 2, 685))
@@ -492,17 +494,27 @@ class Jeu:
         for k, (nom, _) in reversed(list(enumerate(PERSONNAGES[self.mode]))):
             echelle = 0.6 if nom != "petit" else 0.45
             poser(e, anime(nom, self.t + k), ARRIVEE[0] + 34 * k, ARRIVEE[1] - 32 * echelle, echelle=echelle)
-        ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 56))
-        ecrire(e, "Mets le Bled en fête pour Halloween !", 34, BLANC, centre=(L // 2, 116))
+        ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 64))
         salle = f"{' et '.join(self.noms[:self.joueurs()])} — Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
         consigne = f"Appuie sur le {BOUTONS['saut']} pour commencer"
         if self.ouvertes > 1:
             salle = f"<   {salle}   >"
             consigne += "   (la croix : choisir la salle)"
         ecrire(e, salle, 38, BLANC, centre=(L // 2, 612))
-        ecrire(e, consigne, 32, OR, centre=(L // 2, 652))
-        ecrire(e, f"{self.entrees.nom()}      Échap ou {BOUTONS['pause']} : le tableau d'honneur   "
-                  "C : manettes   F : plein écran   M : musique", 22, BLANC, centre=(L // 2, 696))
+        ecrire(e, consigne, 32, OR, centre=(L // 2, 656))
+
+    def dessiner_danse(self, e):
+        """La fin : les personnages dansent sur la terrasse du 5e (ils sautillent, se
+        dandinent et se retournent en rythme)."""
+        r, sol = FENETRES[3], self.dehors.REZ - self.dehors.BASSE[2] * self.dehors.ETAGE - 7
+        for k, (nom, _) in enumerate(PERSONNAGES[self.mode]):
+            t = self.t * 2.2 + k * 0.5
+            saut = 14 * abs(math.sin(t * math.pi))
+            echelle = 0.7 if nom != "petit" else 0.52
+            image = f"{nom}_saut@0" if saut > 9 else anime(nom, self.t)
+            x = r.centerx - 30 + 60 * k + 10 * math.sin(t * math.pi / 2)
+            poser(e, image, x, sol - 32 * echelle - saut, int(t) % 2 == 1, angle=12 * math.sin(t * math.pi),
+                  echelle=echelle)
 
     def dessiner_perso(self, e, mode, k, x, y, echelle=1.0):
         """Le personnage k d'une façon de jouer, qui sautille."""
@@ -574,10 +586,7 @@ class Jeu:
                 ecrire(e, droite, 26, couleur_d, gauche=(x + 180 - police(26).size(droite)[0] / ZOOM, y - 9))
             if haut + visibles < len(lignes):
                 ecrire(e, "…", 30, BLANC, centre=(x, 620))
-        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : jouer   Échap : quitter", 32, OR,
-               centre=(L // 2, 668))
-        ecrire(e, f"{self.entrees.nom()}      C : manettes   F : plein écran   M : musique", 22, BLANC,
-               centre=(L // 2, 704))
+        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : jouer", 32, OR, centre=(L // 2, 676))
 
     def dessiner_confirmer(self, e):
         eq = self.a_confirmer

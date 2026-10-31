@@ -9,7 +9,10 @@ la terrasse du 5e (dehors : pergola, potager, lac et Alpes). Les décors sont da
 `decors.py` (un mur, une frise et des tuiles par salle, lugubres et en fête). Chaque salle a
 aussi ses lampes à allumer (`NIVEAUX[i]["objets"]` : néon, suspension, projecteur, lampion,
 à la place du chandelier) et un plan qui rappelle le lieu (établi, comptoir du bar, gradins
-et estrade, bacs du potager).
+et estrade, bacs du potager). La lettre `=` du plan est un meuble sur lequel on monte (comme une
+planche) : établi à la Bricotine, table, pergola sur la terrasse (dessiné par
+`decors.dessiner_meuble`, avec ses pieds jusqu'au sol) ; une lampe pend du meuble ou du
+plafond juste au-dessus d'elle (`Chose.accroche`).
 
 Déroulement de la variante (`jeu.py`) : au lancement, le **tableau d'honneur** (une colonne
 par façon de jouer : « + Nouveau » puis chaque équipe, avec son meilleur temps ou la salle

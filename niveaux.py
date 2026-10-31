@@ -17,7 +17,7 @@ MODES = [("solo", "Seul", "Un vampire, un joueur."),
 # Le plafond (rangées 0 et 1 : la frise, où il ne se passe rien), le sol (rangée 17) et
 # les murs des deux bouts sont mis tout seuls.
 # Chaque élément du plan : (rangée, colonne, contenu), une lettre par tuile.
-#   #  pierre      -  planche (on la traverse par-dessous)      V  départ du vampire
+#   #  pierre      -  planche (on la traverse par-dessous)      =  meuble (pareil, mais dessiné selon la salle : établi, table, pergola)      V  départ du vampire
 #   c  courge      s  squelette     f  fantôme      b  chauve-souris
 #   t  toile d'araignée              l  lampe (selon la salle)      o  bonbon à ramasser
 # Pour chaque salle : nom, décor (voir decors.py), objets (les lampes de la salle), largeur (colonnes), plan, bonbons en poche au départ,
@@ -29,7 +29,9 @@ NIVEAUX = [
      "objets": {"l": ("neon_eteint", "neon_allume")}, "cols": 48, "poche": 3, "corbeau": None,
      "plan": [
          (16, 3, "V"), (16, 8, "c"), (13, 14, "l"), (14, 20, "b"), (16, 23, "o"),
-         (15, 11, "-----"),                                   # l'établi
+         (15, 11, "====="),                                   # l'établi (on monte dessus)
+         (12, 16, "----"), (9, 19, "----"), (5, 21, "l"),     # des étagères jusqu'à un néon
+         (8, 36, "-----"), (4, 38, "l"),                      # et un autre, tout en haut
          (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),
          (15, 34, "#"), (16, 34, "#"), (16, 41, "s"), (16, 45, "o"),
      ],
@@ -46,7 +48,6 @@ NIVEAUX = [
          (16, 3, "V"),
          (15, 18, "#"), (16, 18, "#"), (15, 48, "#"), (16, 48, "#"),
          (15, 30, "######"), (16, 30, "######"),             # le comptoir du bar
-         (15, 6, "---"),                                      # une table
          (14, 12, "-----"), (13, 37, "-----"), (14, 52, "-----"),
          (11, 18, "------"), (11, 40, "------"),
          (8, 12, "-----"), (8, 26, "------"), (8, 38, "---"), (8, 44, "------"), (8, 56, "------"),
@@ -73,14 +74,15 @@ NIVEAUX = [
          (8, 2, "-----"), (8, 24, "------"), (8, 36, "-------"), (8, 44, "------"), (8, 62, "-----"),
          (8, 69, "----------"),
          (11, 8, "-----"), (11, 18, "------"), (11, 36, "------"), (11, 54, "------"), (11, 70, "------"),
-         (16, 12, "########"), (15, 14, "######"), (14, 16, "####"), (13, 18, "##"),  # les gradins
+         (16, 1, "########"), (15, 1, "######"), (14, 1, "####"), (13, 1, "##"),  # les gradins
+         (15, 38, "===="),                                    # une table
          (16, 66, "##########"),                              # l'estrade
          (14, 30, "------"), (14, 46, "-----"), (14, 62, "------"),
          (12, 27, "f"), (9, 50, "f"), (6, 71, "f"),
          (15, 28, "#"), (16, 28, "#"), (15, 48, "#"), (16, 48, "#"), (15, 64, "#"), (16, 64, "#"),
          (13, 15, "o"), (13, 32, "o"), (10, 38, "o"), (7, 46, "o"), (4, 54, "o"), (10, 72, "o"),
-         (16, 60, "o"), (12, 19, "o"),
-         (16, 3, "V"), (16, 10, "c"), (16, 22, "s"), (16, 40, "c"), (16, 55, "s"), (15, 72, "c"),
+         (16, 60, "o"), (12, 1, "o"),
+         (16, 10, "V"), (16, 14, "c"), (16, 22, "s"), (14, 40, "c"), (16, 55, "s"), (15, 72, "c"),
      ],
      "aides": []},
     {"nom": "La terrasse du 5e", "decor": "terrasse",
@@ -100,7 +102,8 @@ NIVEAUX = [
          (12, 27, "f"), (9, 52, "f"), (6, 66, "f"), (12, 80, "f"),
          (4, 20, "b"), (3, 44, "b"), (7, 70, "b"), (3, 90, "b"),
          (2, 10, "t"), (2, 47, "t"), (2, 76, "t"),
-         (3, 31, "l"), (3, 55, "l"), (3, 85, "l"),
+         (12, 1, "======"), (12, 24, "======"), (12, 70, "======="),   # la pergola (on y grimpe)
+         (14, 3, "l"), (14, 27, "l"), (14, 74, "l"),          # les lampions, accrochés dessous
          (13, 10, "o"), (10, 38, "o"), (7, 45, "o"), (16, 66, "o"), (4, 30, "o"), (10, 88, "o"),
      ],
      "aides": []},

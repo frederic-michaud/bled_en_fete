@@ -138,6 +138,14 @@ class Chose:
                 self.x = self.x0 + 70 * math.cos(self.t * 1.6)
                 self.y = self.y0 + 30 * math.sin(self.t * 3.2)
 
+    def accroche(self):
+        """Le y où pend la lampe : le dessous de ce qui est juste au-dessus d'elle."""
+        c, r = int(self.x0 // T), int((self.y0 - self.h / 2) // T)
+        while r > 0 and self.p.tuile(c, r) not in "#-=":
+            r -= 1
+        t = self.p.tuile(c, r)
+        return (r + 1) * T if t == "#" else r * T + 14
+
     def changer_taille(self, nom):
         """Prend la taille de l'image nom (les choses posées restent sur le sol)."""
         bas = self.y + self.h / 2
@@ -183,8 +191,8 @@ class Chose:
             return
         echelle = 1.0 + 0.35 * math.sin(self.pop / 0.5 * math.pi)
         angle, nom, gauche = 0.0, (self.fete if self.fetee else self.peur), self.dir < 0
-        if self.genre == "l":  # le fil de la lampe, depuis le plafond
-            dessin.line(surf, (60, 60, 70), (x, HAUT_FRISE), (x, y - self.h / 2 + 2), 2)
+        if self.genre == "l":  # le fil de la lampe, depuis le plafond ou le meuble au-dessus
+            dessin.line(surf, (60, 60, 70), (x, self.accroche()), (x, y - self.h / 2 + 2), 2)
         if self.fetee and self.genre in "fb":
             angle = 5 * math.sin(self.t * 2)
         if self.tas > 0:
@@ -241,7 +249,7 @@ class Vampire:
         self.au_sol = False
         for c, r in self.tuiles():
             t = self.p.tuile(c, r)
-            if t == "#" or (t == "-" and dy > 0 and bas_avant <= r * T + 0.01):
+            if t == "#" or (t in "-=" and dy > 0 and bas_avant <= r * T + 0.01):
                 if dy > 0:
                     self.y, self.au_sol = r * T - self.H, True
                 else:
@@ -464,7 +472,7 @@ class Partie:
         for r, c, texte in self.niveau["plan"]:
             for k, lettre in enumerate(texte):
                 x, y = (c + k) * T + T / 2, r * T + T / 2
-                if lettre in "#-":
+                if lettre in "#-=":
                     self.grille[r][c + k] = lettre
                 elif lettre == "V":
                     depart = x, (r + 1) * T
@@ -488,6 +496,19 @@ class Partie:
         self.gagne_t = None       # temps depuis la fin (tout est transformé)
         self.t = 0.0
         self.murs, self.frises, (self.pierre, self.planche) = decors.decor(self.niveau["decor"])
+        # les meubles sur lesquels on peut monter (établi, table, pergola) : x de début, de fin,
+        # rangée, et le sol en dessous (pour leurs pieds)
+        self.meubles = []
+        for r in range(RANGS):
+            c = 0
+            while c < COLS:
+                if self.grille[r][c] == "=":
+                    c0 = c
+                    while c < COLS and self.grille[r][c] == "=":
+                        c += 1
+                    sol = next(rr for rr in range(r + 1, RANGS) if self.grille[rr][c0] == "#")
+                    self.meubles.append((c0, c, r, sol))
+                c += 1
         self.maj_camera(direct=True)
 
     # ---- le décor ----
@@ -501,7 +522,7 @@ class Partie:
         return self.tuile(int(x // T), int(y // T)) == "#"
 
     def porte(self, x, y):
-        return self.tuile(int(x // T), int(y // T)) in "#-"
+        return self.tuile(int(x // T), int(y // T)) in "#-="
 
     # ---- ce qui se passe ----
 
@@ -749,6 +770,10 @@ class Partie:
                     e.blit(self.pierre, (_z(c * T - cx), _z(r * T)))
                 elif t == "-":
                     e.blit(self.planche, (_z(c * T - cx), _z(r * T)))
+        for c0, c1, r, sol in self.meubles:
+            if c1 * T - cx > -60 and c0 * T - cx < L + 60:
+                decors.dessiner_meuble(self.niveau["decor"], e, c0 * T - cx, c1 * T - cx, r * T, sol * T,
+                                       f > 0.5)
         for ch in self.choses:
             ch.dessiner(e, cx)
         for x, y, absent in self.bonbons:

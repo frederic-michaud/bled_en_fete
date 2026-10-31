@@ -466,28 +466,41 @@ def couteau(phase):
 
 
 def courge(phase):
-    """La courge grognonne : elle respire, une lueur rouge palpite dans ses yeux et sa
-    bouche, elle cligne des yeux et grogne en claquant des dents."""
+    """La courge grognonne : bien ronde, côtelée, avec sa tige en tire-bouchon et une
+    feuille. Elle respire, une lueur palpite dans ses yeux et sa bouche taillés, elle
+    fronce les sourcils, cligne des yeux et grogne en claquant des dents."""
     p = phase * TAU
     souffle = 1 + 0.04 * math.sin(p * 2)
     lueur = 0.55 + 0.35 * math.sin(p * 4) * math.sin(p * 3)
     cligne = 0.82 < phase < 0.9
-    bouche = 2.5 * max(0.0, math.sin(p * 3))   # elle grogne
-    oeil_g = "16,31 28,36 18,41" if not cligne else "15,37 28,37 28,38.5 15,38.5"
-    oeil_d = "48,31 36,36 46,41" if not cligne else "49,37 36,37 36,38.5 49,38.5"
+    b = 2.5 * max(0.0, math.sin(p * 3))   # elle grogne : la bouche s'ouvre
+    oeil_g = "15,30 28,35 17,41" if not cligne else "15,36 28,36 28,37.5 15,37.5"
+    oeil_d = "49,30 36,35 47,41" if not cligne else "49,36 36,36 36,37.5 49,37.5"
     trous = (f'<polygon points="{oeil_g}"/><polygon points="{oeil_d}"/>'
-             f'<path d="M16 {48 - bouche * 0.3:.1f} L23 {46 - bouche * 0.3:.1f} L27 51 L32 {46 - bouche * 0.3:.1f} '
-             f'L37 51 L41 {46 - bouche * 0.3:.1f} L48 {48 - bouche * 0.3:.1f} L41 {55 + bouche:.1f} '
-             f'L23 {55 + bouche:.1f} Z"/>')
+             f'<path d="M14 {47 - b * 0.3:.1f} Q32 {53 - b * 0.3:.1f} 50 {47 - b * 0.3:.1f} L46 {54 + b:.1f} '
+             f'L41 {51 + b:.1f} L37 {56 + b:.1f} L32 {52 + b:.1f} L27 {56 + b:.1f} L23 {51 + b:.1f} L18 {54 + b:.1f} Z"/>')
     return _svg((0, 0, 64, 64),
+                '<defs><radialGradient id="peau" cx="0.4" cy="0.35" r="0.7">'
+                '<stop offset="0" stop-color="#ffa64a"/><stop offset="0.6" stop-color="#e2741e"/>'
+                '<stop offset="1" stop-color="#a84a12"/></radialGradient>'
+                '<radialGradient id="cote" cx="0.5" cy="0.4" r="0.7">'
+                '<stop offset="0" stop-color="#e07a26"/><stop offset="1" stop-color="#93400e"/></radialGradient></defs>'
+                '<ellipse cx="32" cy="61" rx="24" ry="3" fill="#000" opacity="0.3"/>'
                 f'<g transform="translate(0 {64 - 64 * souffle:.1f}) scale(1 {souffle:.3f})">'
-                '<path d="M30 16 Q29 7 36 4 L38 7 Q34 9 34 16 Z" fill="#4f6a2a"/>'
-                '<ellipse cx="20" cy="40" rx="14" ry="20" fill="#b8641c"/>'
-                '<ellipse cx="44" cy="40" rx="14" ry="20" fill="#b8641c"/>'
-                '<ellipse cx="32" cy="40" rx="14" ry="22" fill="#d8782a"/>'
-                '<path d="M24 22 Q22 40 25 58 M40 22 Q42 40 39 58" stroke="#b05a18" stroke-width="1.2" fill="none"/>'
+                '<path d="M31 18 Q28 9 33 3 L37 5 Q33 10 35 18 Z" fill="#5b4a22"/>'
+                '<path d="M34 6 Q44 2 46 9 Q42 7 39 11" stroke="#6a8a30" stroke-width="1.6" fill="none"/>'
+                '<path d="M36 12 Q46 10 50 16 Q42 19 36 12 Z" fill="#6a9a34"/>'
+                '<ellipse cx="14" cy="40" rx="11" ry="19" fill="url(#cote)"/>'
+                '<ellipse cx="50" cy="40" rx="11" ry="19" fill="url(#cote)"/>'
+                '<ellipse cx="22" cy="40" rx="13" ry="21" fill="url(#cote)"/>'
+                '<ellipse cx="42" cy="40" rx="13" ry="21" fill="url(#cote)"/>'
+                '<ellipse cx="32" cy="40" rx="14" ry="22" fill="url(#peau)"/>'
+                '<path d="M25 21 Q21 40 25 60 M39 21 Q43 40 39 60" stroke="#8a3c0c" stroke-width="1.1" fill="none" opacity="0.7"/>'
+                '<path d="M27 24 Q24 30 25 36" stroke="#ffd08a" stroke-width="1.6" fill="none" opacity="0.6"/>'
+                '<path d="M13 26 L27 30 M51 26 L37 30" stroke="#5a2408" stroke-width="2.2" stroke-linecap="round"/>'
                 f'<g fill="#2a1006">{trous}</g>'
-                f'<g fill="#ff4a10" opacity="{lueur:.2f}">{trous}</g>'
+                f'<g fill="#ff7a10" opacity="{lueur:.2f}">{trous}</g>'
+                f'<g fill="#ffe070" opacity="{lueur * 0.6:.2f}" transform="translate(32 40) scale(0.6) translate(-32 -40)">{trous}</g>'
                 '</g>')
 
 
