@@ -41,7 +41,7 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   salles, corbeau attrapable, règles des créatures, enchaînement des écrans, vitesse).
 - Pour voir un écran sans fenêtre : `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy`, puis
   `Jeu().image(commande)` image par image et `pygame.image.save(jeu.ecran, ...)`.
-- Touches : F plein écran, M musique, C (à l'accueil) réglage des manettes, Échap
+- Le jeu démarre en plein écran. Touches : F plein écran / fenêtre, M musique, C (à l'accueil) réglage des manettes, Échap
   accueil / quitter, R recommencer la salle.
 
 ## Règles du jeu (choisies avec l'utilisateur)
