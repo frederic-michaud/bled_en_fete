@@ -112,6 +112,9 @@ def enchainement():
     j = jeu.Jeu()
     for _ in range(200):
         j.image(C())
+    j.image(presse(droite=True))
+    j.image(presse(gauche=True))
+    verifier(j.niveau == 0, "accueil : les salles pas encore atteintes sont fermées")
     j.image(presse(saut=True))
     for _ in range(200):
         j.image(C())
@@ -136,6 +139,7 @@ def enchainement():
         attendu = ("jeu", i + 1) if i + 1 < len(NIVEAUX) else ("fin", None)
         obtenu = (j.etat, j.partie.i_niveau if j.etat == "jeu" else None)
         verifier(obtenu == attendu, f"salle {i + 1} finie : on arrive à {attendu}")
+    verifier(j.ouvertes == len(NIVEAUX), "toutes les salles finies : on peut toutes les choisir")
     temps.sort()
     moyen, pire = sum(temps) / len(temps) * 1000, temps[int(len(temps) * 0.99)] * 1000
     verifier(pire < 16, f"vitesse : {moyen:.1f} ms par image en moyenne, {pire:.1f} ms au pire (99 %)")

@@ -48,6 +48,7 @@ class Jeu:
         self.etat = "titre"       # titre, voyage, jeu ou fin
         self.partie = None
         self.niveau = 0           # salle choisie à l'accueil
+        self.ouvertes = 1         # on ne peut choisir que les salles déjà atteintes
         self.pause = False
         self.t = 0.0
         self.titre_t = 0.0        # depuis quand on est à l'accueil (le vampire arrive)
@@ -210,8 +211,10 @@ class Jeu:
         if self.etat == "titre":
             self.titre_t += DT
             if cmd.gauche_presse or cmd.droite_presse:
-                self.niveau = (self.niveau + cmd.droite_presse - cmd.gauche_presse) % len(NIVEAUX)
-                self.son("clic")
+                choix = (self.niveau + cmd.droite_presse - cmd.gauche_presse) % self.ouvertes
+                if choix != self.niveau:
+                    self.niveau = choix
+                    self.son("clic")
             if ok and self.titre_t > 0.5:
                 self.partir(None, self.niveau)
             elif echap:
@@ -240,6 +243,7 @@ class Jeu:
                 self.etat, self.titre_t = "titre", 3.0
             elif p.gagne_t is not None and p.gagne_t > 2.5 and (cmd.saut_presse or entree):
                 suivante = p.i_niveau + 1
+                self.ouvertes = max(self.ouvertes, min(suivante + 1, len(NIVEAUX)))
                 self.partir(p.i_niveau, suivante if suivante < len(NIVEAUX) else None)
             elif cmd.pause_presse or (self.pause and entree):
                 self.pause = not self.pause
@@ -298,10 +302,13 @@ class Jeu:
             poser(e, anime("vampire", self.t), ARRIVEE[0], ARRIVEE[1] - 19, echelle=0.6)
         ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 56))
         ecrire(e, "Rends le château tout beau pour Halloween !", 34, BLANC, centre=(L // 2, 116))
-        ecrire(e, f"<   Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}   >", 38, BLANC,
-               centre=(L // 2, 608))
-        ecrire(e, f"Appuie sur le {BOUTONS['saut']} pour commencer   (la croix : choisir la salle)",
-               32, OR, centre=(L // 2, 650))
+        salle = f"Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
+        consigne = f"Appuie sur le {BOUTONS['saut']} pour commencer"
+        if self.ouvertes > 1:
+            salle = f"<   {salle}   >"
+            consigne += "   (la croix : choisir la salle)"
+        ecrire(e, salle, 38, BLANC, centre=(L // 2, 608))
+        ecrire(e, consigne, 32, OR, centre=(L // 2, 650))
         ecrire(e, f"{self.entrees.nom()}      C : manettes   F : plein écran   M : musique   Échap : quitter",
                22, BLANC, centre=(L // 2, 696))
 

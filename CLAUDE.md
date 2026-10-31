@@ -28,6 +28,8 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   fantôme = seulement un bonbon (on passe à travers : « Bouh ! ») ; chauve-souris = un
   saut ; toile d'araignée et chandelier = les toucher. Toucher de côté une créature
   méchante : « Bouh ! », le vampire recule. **Pas de vies ni de cœurs** (refusé).
+- À l'accueil, la croix ne choisit que parmi les salles déjà atteintes (`Jeu.ouvertes`,
+  oublié quand on quitte le jeu) : la salle suivante s'ouvre quand on finit une salle.
 - Bonbons : 3 en poche au départ (5 au plus) ; on en ramasse dans la salle, ils
   repoussent 20 s plus tard.
 - Le corbeau grognon (à partir de la salle 2) défait les décorations l'une après l'autre
