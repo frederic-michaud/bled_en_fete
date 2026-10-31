@@ -2,6 +2,8 @@
 écrans Retina, texte, et images (des SVG fabriqués par animations.py)."""
 import io
 import os
+import sys
+from pathlib import Path
 
 import manettes  # noqa: F401  (règle les options SDL des manettes avant pygame)
 import pygame
@@ -17,6 +19,8 @@ def _zoom_ecran():
     """2 sur un écran haute définition (Retina) : on dessine deux fois plus fin pour rester
     net ; 1 sur un écran ordinaire : quatre fois moins de points à dessiner, le jeu reste
     rapide sur un vieil ordinateur. JEU_ZOOM=1 ou 2 force le choix."""
+    if sys.platform == "emscripten":
+        return 1  # dans un navigateur : en simple définition, pour aller assez vite
     if os.environ.get("JEU_ZOOM") in ("1", "2"):
         return int(os.environ["JEU_ZOOM"])
     if os.environ.get("SDL_VIDEODRIVER") == "dummy":
@@ -29,6 +33,10 @@ def _zoom_ecran():
         return 2 if points >= 150 else 1
     except (pygame.error, AttributeError):
         return 2
+
+
+# Dans un navigateur (version web, faite avec pygbag), Python tourne sous « emscripten ».
+WEB = sys.platform == "emscripten"
 
 
 # Tout le jeu est pensé sur un écran de 1280 x 720, mais dessiné ZOOM fois plus fin
@@ -59,6 +67,7 @@ TAILLES = {
 }
 
 _images = {}
+DOSSIER_PNG = Path(__file__).with_name("images")  # les images en PNG (version web)
 _polices = {}
 
 
@@ -155,7 +164,13 @@ def image(nom, gauche=False):
             fabrique, n, _ = animations.ANIMES[base]
             w, h = TAILLES[base]
             svg = io.BytesIO(fabrique(int(k or 0) / n).encode())
-            _images[cle] = pygame.image.load_sized_svg(svg, (w * ZOOM, h * ZOOM))
+            try:
+                _images[cle] = pygame.image.load_sized_svg(svg, (w * ZOOM, h * ZOOM))
+            except (pygame.error, AttributeError):
+                # sans lecteur de SVG (certains navigateurs) : les images faites d'avance
+                # par construire_web.sh, en simple définition
+                im = pygame.image.load(str(DOSSIER_PNG / f"{base}@{int(k or 0)}.png"))
+                _images[cle] = pygame.transform.smoothscale(im, (w * ZOOM, h * ZOOM))
     return _images[cle]
 
 

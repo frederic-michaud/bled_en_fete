@@ -16,13 +16,17 @@ os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "1")  # agrandissement lissé
 
 import manettes  # à importer avant pygame : règle les options SDL des manettes
 import pygame
-from pygame._sdl2 import video
+
+try:
+    from pygame._sdl2 import video
+except ImportError:  # dans un navigateur
+    video = None
 
 import musique
 import palmares
 from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, agrandi, bezier, doux, vignette, zoomer
 from niveaux import BOUTONS, MODES, NIVEAUX
-from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire,
+from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, WEB, ZOOM, anime, dessin, ecrire,
                     melange, police, poser, preparer_images)
 from partie import PERSONNAGES, Partie
 from sons import creer_sons
@@ -41,15 +45,11 @@ class Jeu:
         # On dessine sur une grande image, que la carte graphique étale dans la fenêtre.
         self.ecran = pygame.Surface((L * ZOOM, H * ZOOM))
         self.plein_ecran = True   # on commence en plein écran (F : en fenêtre, et retour)
-        try:
-            self.fenetre = pygame.Window(TITRE, (L, H), resizable=True, allow_high_dpi=True)
-            self.rendu = video.Renderer(self.fenetre, accelerated=1, vsync=True)
-            self.rendu.logical_size = self.ecran.get_size()
-            self.texture = video.Texture(self.rendu, self.ecran.get_size(), streaming=True)
-            pygame.mouse.set_visible(False)
-            self.fenetre.set_fullscreen(True)
-        except (pygame.error, RuntimeError):
-            self.rendu = None  # pas d'écran disponible (essais automatiques)
+        self.rendu = None
+        if WEB:  # dans un navigateur : on dessine directement dans la page
+            self.ecran = pygame.display.set_mode((L * ZOOM, H * ZOOM))
+        else:
+            self.ouvrir_fenetre()
         self.horloge = pygame.time.Clock()
         self.sons = creer_sons()
         self.musique = musique.Musique()
@@ -87,12 +87,26 @@ class Jeu:
             Partie(i).dessiner(self.ecran_salle, apercu=True)
             self.sombres.append(vignette(self.ecran_salle, r, True))
 
+    def ouvrir_fenetre(self):
+        """Sur ordinateur : une fenêtre, que la carte graphique remplit avec self.ecran."""
+        try:
+            self.fenetre = pygame.Window(TITRE, (L, H), resizable=True, allow_high_dpi=True)
+            self.rendu = video.Renderer(self.fenetre, accelerated=1, vsync=True)
+            self.rendu.logical_size = self.ecran.get_size()
+            self.texture = video.Texture(self.rendu, self.ecran.get_size(), streaming=True)
+            pygame.mouse.set_visible(False)
+            self.fenetre.set_fullscreen(True)
+        except (pygame.error, RuntimeError):
+            self.rendu = None  # pas d'écran disponible (essais automatiques)
+
     def son(self, nom):
         if nom in self.sons:
             self.sons[nom].play()
 
     def quitter(self):
         self.sauver()
+        if WEB:
+            return  # dans un navigateur, on ferme simplement la page
         pygame.quit()
         sys.exit()
 
@@ -280,7 +294,7 @@ class Jeu:
                         self.fenetre.set_windowed()
                 elif ev.key == pygame.K_m:
                     self.musique.active = not self.musique.active
-                elif ev.key == pygame.K_c and self.etat in ("titre", "honneur"):
+                elif ev.key == pygame.K_c and self.etat in ("titre", "honneur") and not WEB:
                     self.regler()
                 elif ev.key == pygame.K_r and self.etat == "jeu":
                     self.commencer()
@@ -442,7 +456,9 @@ class Jeu:
         self.noms[self.qui] = nom
 
     def afficher(self):
-        if self.rendu:
+        if WEB:
+            pygame.display.flip()
+        elif self.rendu:
             self.texture.update(self.ecran)
             self.rendu.clear()
             self.texture.draw(dstrect=(0, 0, L * ZOOM, H * ZOOM))

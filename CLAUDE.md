@@ -1,5 +1,14 @@
 # Halloween au Bled — jeu d'Halloween à la manette, seul ou à deux
 
+**Version web** (branche `web`) : le même jeu dans un navigateur, avec pygbag (Python en
+WebAssembly). `./construire_web.sh` copie les fichiers du jeu dans `site/` (pas dans git),
+fait aussi chaque image en PNG (si le navigateur ne lit pas les SVG) et fabrique
+`site/bled_en_fete/build/web` (index.html + archive), publié sur la branche `gh-pages`
+(GitHub Pages). Dans le navigateur (`outils.WEB`) : `main.py` lance la boucle (qui rend la
+main au navigateur à chaque image), simple définition, affichage par `display.set_mode`,
+tableau d'honneur gardé dans le navigateur (localStorage), pas de « quitter » ni de touche C.
+Sur ordinateur, rien ne change.
+
 **Variante « Bled »** (branche `bled`) : au lieu d'un château anonyme, le Bled, la
 coopérative d'habitants des Plaines-du-Loup à Lausanne où vit l'utilisateur (projet de
 TRIBU architecture). Vu de la cour la nuit (`dehors.py`), avec 4 salles de bas en haut :
