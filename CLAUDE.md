@@ -1,4 +1,13 @@
-# Vampire en fête — jeu d'Halloween à la manette, seul ou à deux
+# Halloween au Bled — jeu d'Halloween à la manette, seul ou à deux
+
+**Variante « Bled »** (branche `bled`) : au lieu d'un château anonyme, le Bled, la
+coopérative d'habitants des Plaines-du-Loup à Lausanne où vit l'utilisateur (projet de
+TRIBU architecture). Vu de la cour la nuit (`dehors.py`), avec 4 salles de bas en haut :
+la Bricotine (atelier du sous-sol + vélostation), le foyer (rez, mélèze, bar, vitres sur
+la cour, inventé), la Tanière (salle polyvalente : noire, écran, gradins, projecteurs),
+la terrasse du 5e (dehors : pergola, potager, lac et Alpes). Les décors sont dans
+`decors.py` (un mur, une frise et des tuiles par salle, lugubres et en fête). Les photos
+du site ont servi de modèle seulement : aucune image n'est copiée dans le jeu.
 
 Un vampire redécore son château lugubre pour Halloween. Il traverse 4 salles et doit
 transformer chaque créature ou objet effrayant en sa version fête ; plus la salle se
@@ -72,7 +81,8 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
 - `niveaux.py` : **les données** : `NIVEAUX` (les 4 salles : plan, bonbons, corbeau,
   conseils), `GENRES`, `BOUTONS`. Ajouter une salle = l'ajouter ici + une fenêtre dans
   `dehors.FENETRES`.
-- `dehors.py` : le château vu de dehors (`Dehors`, `FENETRES`), le zoom et le vol.
+- `dehors.py` : le Bled vu de la cour (`Dehors`, `FENETRES`), le zoom et le vol.
+- `decors.py` : le décor de chaque salle (`decor(nom)`, nom = `niveaux.NIVEAUX[i]["decor"]`).
 - `animations.py` : **tous les dessins**, en SVG fabriqués par le programme, une image
   par instant (pygame n'anime pas les SVG). `ANIMES` : nom → (fabrique, images par
   cycle, cycles par seconde). Il n'y a aucun fichier image.

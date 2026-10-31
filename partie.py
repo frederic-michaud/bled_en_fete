@@ -1,4 +1,4 @@
-"""Une salle du château : le vampire (ou les deux personnages, à deux), les créatures à
+"""Une salle du Bled : le vampire (ou les deux personnages, à deux), les créatures à
 transformer, les bonbons, le corbeau grognon, et le dessin de la salle (avec sa lumière
 qui change avec la fête)."""
 import math
@@ -6,6 +6,7 @@ import random
 
 import pygame
 
+import decors
 import manettes
 from niveaux import AU_SOL, BOUTONS, GENRES, NIVEAUX, PAS_DE_BONBON, RANGS
 from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ROSE, T, TAILLES, ZOOM, _z, anime,
@@ -74,120 +75,8 @@ def voiles():
     return _voiles
 
 
-def creer_tuiles():
-    """Images d'une tuile de pierre et d'une planche."""
-    pierre = pygame.Surface((T * ZOOM, T * ZOOM))
-    pierre.fill((74, 72, 92))
-    for y, decal in ((0, 0), (T // 2, T // 2)):
-        dessin.line(pierre, (52, 50, 66), (0, y), (T, y), 2)
-        for x in (decal, decal + T):
-            dessin.line(pierre, (52, 50, 66), (x % T, y), (x % T, y + T // 2), 2)
-    dessin.line(pierre, (92, 90, 112), (2, 3), (T - 4, 3), 1)
-    planche = pygame.Surface((T * ZOOM, 14 * ZOOM), pygame.SRCALPHA)
-    dessin.rect(planche, (110, 72, 44), (0, 0, T, 14), border_radius=3)
-    dessin.line(planche, (140, 96, 60), (3, 3), (T - 3, 3), 2)
-    dessin.line(planche, (70, 44, 26), (T - 1, 0), (T - 1, 14), 2)
-    return pierre, planche
-
-
-MOTIF = 1920                # largeur du motif du mur du fond (répété) : trois fenêtres
-
-
-def creer_mur(fete):
-    """Motif du mur du fond, lugubre ou festif. Ses trois fenêtres donnent sur la nuit :
-    la lune, la campagne au loin, des chauves-souris (ou des feux d'artifice)."""
-    s = pygame.Surface((MOTIF * ZOOM, H * ZOOM))
-    fond, joint = ((70, 42, 84), (52, 30, 64)) if fete else ((36, 34, 50), (27, 25, 38))
-    s.fill(fond)
-    for k, y in enumerate(range(0, H, 30)):
-        dessin.line(s, joint, (0, y), (MOTIF, y), 2)
-        for x in range(30 * (k % 2), MOTIF, 60):
-            dessin.line(s, joint, (x, y), (x, y + 30), 2)
-    ciel = (60, 40, 110) if fete else (14, 18, 40)
-    cadre = (120, 80, 60) if fete else (58, 56, 74)
-    loin = (40, 26, 70) if fete else (8, 10, 24)
-    for k, cx in enumerate((320, 960, 1600)):
-        dessin.rect(s, cadre, (cx - 56, 196, 112, 230), border_radius=10)
-        dessin.circle(s, cadre, (cx, 200), 56)
-        dessin.rect(s, ciel, (cx - 46, 200, 92, 216))
-        dessin.circle(s, ciel, (cx, 202), 46)
-        for i in range(7):
-            sx, sy = cx - 38 + (i * 37 + k * 11) % 76, 170 + (i * 53 + k * 29) % 180
-            dessin.circle(s, (255, 240, 200) if fete else (150, 150, 170), (sx, sy), 1)
-        if k == 0:  # la lune : un croissant pâle, puis une pleine lune dorée
-            if fete:
-                dessin.circle(s, (110, 70, 120), (cx + 8, 240), 32)
-                dessin.circle(s, (255, 190, 80), (cx + 8, 240), 24)
-            else:
-                dessin.circle(s, (200, 200, 190), (cx + 8, 240), 24)
-                dessin.circle(s, ciel, (cx + 20, 232), 22)
-        elif k == 1:  # la campagne : des collines, un arbre mort ou un village allumé
-            dessin.polygon(s, loin, [(cx - 46, 416), (cx - 46, 370), (cx - 20, 356), (cx + 6, 366),
-                                     (cx + 30, 350), (cx + 46, 360), (cx + 46, 416)])
-            if fete:
-                for x, y in ((cx - 26, 372), (cx - 14, 378), (cx + 22, 368), (cx + 32, 376)):
-                    dessin.rect(s, (255, 210, 110), (x, y, 4, 4))
-            else:
-                dessin.line(s, loin, (cx + 24, 354), (cx + 24, 318), 3)
-                dessin.line(s, loin, (cx + 24, 334), (cx + 12, 322), 2)
-                dessin.line(s, loin, (cx + 24, 328), (cx + 34, 316), 2)
-        else:  # des chauves-souris au loin, ou des feux d'artifice
-            if fete:
-                for x, y, c in ((cx - 18, 236, ROSE), (cx + 20, 270, OR)):
-                    for a in range(8):
-                        u = a * math.tau / 8
-                        dessin.line(s, c, (x + 4 * math.cos(u), y + 4 * math.sin(u)),
-                                    (x + 13 * math.cos(u), y + 13 * math.sin(u)), 2)
-            else:
-                for x, y, t in ((cx - 20, 240, 7), (cx + 14, 262, 5), (cx - 4, 284, 4)):
-                    dessin.line(s, (4, 4, 10), (x - t, y - t / 2), (x, y), 2)
-                    dessin.line(s, (4, 4, 10), (x, y), (x + t, y - t / 2), 2)
-        dessin.line(s, cadre, (cx, 160), (cx, 416), 6)
-        dessin.line(s, cadre, (cx - 46, 300), (cx + 46, 300), 6)
-        dessin.rect(s, cadre, (cx - 64, 420, 128, 10), border_radius=3)  # l'appui
-        if fete:  # deux bougies allumées sur l'appui
-            for x in (cx - 34, cx + 28):
-                dessin.circle(s, (120, 80, 90), (x + 3, 398), 12)
-                dessin.rect(s, (250, 238, 210), (x, 402, 7, 18), border_radius=2)
-                dessin.ellipse(s, (255, 150, 40), (x - 1, 388, 9, 14))
-                dessin.ellipse(s, (255, 240, 150), (x + 1.5, 394, 4, 8))
-        else:  # une toile d'araignée dans le coin
-            x, y = cx + 46, 416
-            for a in (180, 205, 230, 255, 270):
-                u = math.radians(a)
-                dessin.line(s, (90, 92, 110), (x, y), (x + 34 * math.cos(u), y + 34 * math.sin(u)), 1)
-            for r in (12, 22, 32):
-                pts = [(x + r * math.cos(math.radians(a)), y + r * math.sin(math.radians(a)))
-                       for a in (180, 205, 230, 255, 270)]
-                for (xa, ya), (xb, yb) in zip(pts, pts[1:]):
-                    dessin.line(s, (90, 92, 110), (xa, ya), (xb, yb), 1)
-    return s
-
-
-def creer_frise(fete):
-    """Motif de la frise sculptée du plafond (160 px de large, répété) : une poutre,
-    des arcades aveugles et des rosaces ; une fois en fête, les arcades s'allument."""
-    s = pygame.Surface((_z(160), _z(HAUT_FRISE)))
-    s.fill((92, 56, 100) if fete else (40, 36, 54))
-    dessin.rect(s, (130, 90, 120) if fete else (62, 58, 80), (0, 0, 160, 8))
-    for x in range(0, 160, 40):
-        if fete:
-            dessin.rect(s, (255, 170, 70), (x + 8, 22, 24, 36))
-            dessin.circle(s, (255, 170, 70), (x + 20, 22), 12)
-            dessin.rect(s, (255, 215, 140), (x + 13, 26, 14, 30))
-        else:
-            dessin.rect(s, (24, 20, 34), (x + 8, 22, 24, 36))
-            dessin.circle(s, (24, 20, 34), (x + 20, 22), 12)
-        dessin.circle(s, FESTIF[x // 40] if fete else (70, 64, 90), (x + 40, 16), 3)
-    dessin.rect(s, (110, 70, 44) if fete else (60, 40, 30), (0, 62, 160, 18))  # la poutre
-    dessin.line(s, (140, 96, 60) if fete else (78, 54, 40), (0, 64), (160, 64), 2)
-    for x in range(20, 160, 40):
-        dessin.circle(s, OR if fete else (40, 30, 26), (x, 71), 3)
-    return s
-
-
 # --------------------------------------------------------------------------
-# Les choses du château
+# Les choses du Bled
 # --------------------------------------------------------------------------
 
 class Chose:
@@ -464,7 +353,7 @@ class Corbeau:
 
     def __init__(self, partie, cible):
         self.p, self.cible = partie, cible
-        # il arrive de loin, mais toujours de l'intérieur du château
+        # il arrive de loin, mais toujours de l'intérieur de la salle
         largeur = partie.cols * T
         cotes = [k for k in (-1, 1) if T * 1.5 < cible.x + k * 750 < largeur - T * 1.5]
         cote = random.choice(cotes or [1 if cible.x < largeur / 2 else -1])
@@ -596,9 +485,7 @@ class Partie:
         self.fete_vue = 0.0       # avance doucement vers la vraie proportion de fête
         self.gagne_t = None       # temps depuis la fin (tout est transformé)
         self.t = 0.0
-        self.pierre, self.planche = creer_tuiles()
-        self.murs = (creer_mur(False), creer_mur(True))
-        self.frises = (creer_frise(False), creer_frise(True))
+        self.murs, self.frises, (self.pierre, self.planche) = decors.decor(self.niveau["decor"])
         self.maj_camera(direct=True)
 
     # ---- le décor ----
@@ -830,10 +717,10 @@ class Partie:
                 if f <= 0.01:
                     break
                 mur.set_alpha(None if f >= 0.99 else round(255 * f))
-            x = -(fond % MOTIF)
+            x = -(fond % decors.MOTIF)
             while x < L:
                 e.blit(mur, (_z(x), 0))
-                x += MOTIF
+                x += decors.MOTIF
         # les guirlandes au plafond apparaissent petit à petit
         for k in range(self.cols * T // 160):
             if (k * 37) % 100 >= f * 100:
@@ -845,7 +732,7 @@ class Partie:
                     (xa, ya), (xb, yb) = points[i], points[i + 1]
                     dessin.polygon(e, FESTIF[(i + k) % 5], [(xa + 2, ya), (xb - 2, yb), ((xa + xb) / 2, ya + 18)])
                 dessin.line(e, (90, 60, 50), points[0], points[-1], 1)
-        # le château
+        # les murs, le sol et les planches
         c0, c1 = max(0, cx // T), min(self.cols - 1, (cx + L) // T)
         for i, frise in enumerate(self.frises):  # la frise du plafond, lugubre puis en fête
             if (i == 0 and f >= 0.99) or (i == 1 and f <= 0.01):

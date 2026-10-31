@@ -9,7 +9,7 @@ import animations
 
 L, H = 1280, 720            # taille de l'écran de jeu
 DT = 1 / 60                 # 60 images par seconde
-T = 40                      # taille d'une tuile du château
+T = 40                      # taille d'une tuile des salles
 # Tout le jeu est pensé sur un écran de 1280 x 720, mais dessiné ZOOM fois plus fin
 # pour rester net sur les écrans haute définition (Retina).
 ZOOM = 2

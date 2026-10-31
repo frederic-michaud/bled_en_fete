@@ -1,4 +1,4 @@
-"""Les salles du château et ce qui s'y cache. C'est ici qu'on change ou qu'on ajoute
+"""Les salles du Bled et ce qui s'y cache. C'est ici qu'on change ou qu'on ajoute
 une salle (et alors une fenêtre dans dehors.FENETRES)."""
 
 # Les boutons de la manette, désignés par leur place (pour ceux qui ne connaissent pas
@@ -13,19 +13,19 @@ MODES = [("solo", "Seul", "Un vampire, un joueur."),
          ("parent", "Parent et enfant", "Le parent mène la danse. Le petit vampire le suit "
                                         "au bout de sa laisse magique.")]
 
-# ---- Les salles du château ----
+# ---- Les salles du Bled (de la cave au toit) ----
 # Le plafond (rangées 0 et 1 : la frise, où il ne se passe rien), le sol (rangée 17) et
 # les murs des deux bouts sont mis tout seuls.
 # Chaque élément du plan : (rangée, colonne, contenu), une lettre par tuile.
 #   #  pierre      -  planche (on la traverse par-dessous)      V  départ du vampire
 #   c  courge      s  squelette     f  fantôme      b  chauve-souris
 #   t  toile d'araignée              l  chandelier      o  bonbon à ramasser
-# Pour chaque salle : nom, largeur (colonnes), plan, bonbons en poche au départ,
+# Pour chaque salle : nom, décor (voir decors.py), largeur (colonnes), plan, bonbons en poche au départ,
 # corbeau (premier passage, attente entre deux passages, vitesse ; None : pas de
 # corbeau) et aides (colonne à partir de laquelle on affiche le conseil).
 RANGS = 18
 NIVEAUX = [
-    {"nom": "L'entrée", "cols": 48, "poche": 3, "corbeau": None,
+    {"nom": "La Bricotine", "decor": "bricotine", "cols": 48, "poche": 3, "corbeau": None,
      "plan": [
          (16, 3, "V"), (16, 8, "c"), (13, 14, "l"), (14, 20, "b"), (16, 23, "o"),
          (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),
@@ -38,7 +38,7 @@ NIVEAUX = [
                (25, "Le fantôme n'a peur que des bonbons : bouton de droite !"),
                (31, "Grimpe et touche la toile d'araignée"),
                (38, "Le squelette : saute-lui dessus deux fois ! Les bonbons ne marchent pas")]},
-    {"nom": "Le couloir", "cols": 64, "poche": 3, "corbeau": (30.0, (20.0, 28.0), 90.0),
+    {"nom": "Le foyer", "decor": "foyer", "cols": 64, "poche": 3, "corbeau": (30.0, (20.0, 28.0), 90.0),
      "plan": [
          (16, 3, "V"),
          (15, 18, "#"), (16, 18, "#"), (15, 32, "#"), (16, 32, "#"), (15, 48, "#"), (16, 48, "#"),
@@ -58,7 +58,7 @@ NIVEAUX = [
                (9, ""),
                (20, "Un corbeau grognon viendra défaire tes décorations : touche-le pour le chasser"),
                (30, "")]},
-    {"nom": "La grande salle", "cols": 80, "poche": 3, "corbeau": (20.0, (14.0, 22.0), 110.0),
+    {"nom": "La Tanière", "decor": "taniere", "cols": 80, "poche": 3, "corbeau": (20.0, (14.0, 22.0), 110.0),
      "plan": [
          (2, 2, "t"), (2, 37, "t"), (2, 77, "t"),
          (3, 32, "l"), (3, 55, "l"), (3, 66, "l"),
@@ -75,7 +75,7 @@ NIVEAUX = [
          (16, 3, "V"), (16, 10, "c"), (16, 22, "s"), (16, 40, "c"), (16, 55, "s"), (16, 72, "c"),
      ],
      "aides": []},
-    {"nom": "La tour", "cols": 96, "poche": 2, "corbeau": (12.0, (9.0, 15.0), 140.0),
+    {"nom": "La terrasse du 5e", "decor": "terrasse", "cols": 96, "poche": 2, "corbeau": (12.0, (9.0, 15.0), 140.0),
      "plan": [
          (14, 24, "#"), (15, 24, "#"), (16, 24, "#"),
          (13, 48, "#"), (14, 48, "#"), (15, 48, "#"), (16, 48, "#"),
@@ -97,7 +97,7 @@ NIVEAUX = [
      "aides": []},
 ]
 
-# Ce qui se cache dans le château : image effrayante, image de fête, règle, message.
+# Ce qui se cache au Bled : image effrayante, image de fête, règle, message.
 # Règles : « couteau » = se mettre à côté et sortir le couteau (bouton du haut) ;
 # « touche » = il suffit de la toucher ; « mechant » = lui sauter dessus, mais le
 # toucher de côté fait « Bouh ! » (le squelette : deux fois, il tombe d'abord en tas

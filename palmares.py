@@ -1,4 +1,4 @@
-"""Le tableau d'honneur : tous ceux qui ont mis le château entier en fête, avec leur
+"""Le tableau d'honneur : tous ceux qui ont mis tout le Bled en fête, avec leur
 temps total (le temps passé dans les salles, sans les pauses ni les voyages)."""
 import json
 import time

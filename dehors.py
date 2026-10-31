@@ -1,22 +1,25 @@
-"""Le château vu de dehors : l'accueil (le vampire arrive au château) et le voyage
-d'une salle à l'autre (on recule jusqu'à la fenêtre de la salle, le vampire vole vers
-la suivante, on plonge dedans)."""
+"""Le Bled vu de la cour, la nuit : l'accueil (le vampire arrive dans la cour) et le
+voyage d'une salle à l'autre (on recule jusqu'à la fenêtre de la salle, le vampire vole
+vers la suivante, on plonge dedans)."""
 import math
 import random
 
 import pygame
 
-from outils import (H, L, OR, ORANGE, VIOLET, ZOOM, _z, anime, degrade, dessin,
+from decors import MELEZE, RIDEAU, citrouille
+from outils import (BLANC, FESTIF, H, L, OR, ZOOM, _z, anime, degrade, dessin, ecrire,
                     melange, poser)
 
 # --------------------------------------------------------------------------
-# Le château vu de dehors : l'accueil, et le voyage d'une salle à l'autre
+# Le Bled vu de dehors : l'accueil, et le voyage d'une salle à l'autre
 # --------------------------------------------------------------------------
 
-# La fenêtre de chaque salle dans le château (une par salle de NIVEAUX).
-FENETRES = [pygame.Rect(420, 440, 190, 110), pygame.Rect(670, 440, 190, 110),
-            pygame.Rect(440, 300, 400, 110), pygame.Rect(590, 150, 100, 130)]
-ARRIVEE = (290, 560)                 # où le vampire se pose sur la colline, à l'accueil
+# La fenêtre de chaque salle dans le Bled (une par salle de NIVEAUX) : la Bricotine au
+# sous-sol, le foyer et la Tanière au rez, la terrasse du 5e sur le toit de l'aile basse.
+FENETRES = [pygame.Rect(530, 498, 120, 58), pygame.Rect(240, 402, 160, 84),
+            pygame.Rect(720, 402, 160, 84), pygame.Rect(190, 190, 160, 84)]
+NOMS_FENETRES = ["Bricotine", "Foyer", "Tanière", "Terrasse"]
+ARRIVEE = (110, 610)                 # où le vampire se pose dans la cour, à l'accueil
 SORTIE, VOL, ENTREE = 1.2, 1.8, 1.2   # durées du voyage : on recule, il vole, on plonge
 
 
@@ -60,126 +63,103 @@ def vignette(source, r, sombre):
 
 
 class Dehors:
-    """Le château dans la nuit, sur sa colline. Dans chaque fenêtre, un aperçu de la
-    salle : assombri tant qu'elle fait peur, en fête une fois finie. Tant que le château
-    est lugubre, il y a des éclairs et des chauves-souris."""
+    """Le Bled la nuit, vu de la cour : l'aile basse (avec la terrasse du 5e sur son toit)
+    et l'aile haute, en mélèze, avec leurs balcons filants et leurs rideaux bleus ; le
+    rez en béton ; derrière, les Alpes. Dans chaque fenêtre de salle, un aperçu :
+    assombri tant qu'elle fait peur, en fête une fois finie. Plus le Bled est en fête,
+    plus il y a de fenêtres allumées, de guirlandes et de citrouilles sur les balcons."""
 
-    PIERRE, CLAIR, OMBRE, JOINT = (56, 50, 74), (76, 70, 98), (36, 32, 50), (44, 40, 60)
-    TOIT, TOIT_OMBRE = (46, 32, 68), (32, 22, 50)
-    PETITES = [(360, 300), (360, 410), (900, 300), (900, 410), (604, 92), (656, 92)]
-    BANNIERES = [(345, 470), (895, 470)]
-    TORCHES = [(596, 500), (684, 500)]
+    SOL = 562                     # le sol de la cour, au pied du bâtiment
+    REZ, ETAGE = 392, 28          # le haut du rez, la hauteur d'un étage
+    BASSE = (110, 600, 4)         # l'aile basse : x de gauche, x de droite, étages
+    HAUTE = (600, 1170, 8)        # l'aile haute
+    BETON, BETON_SOMBRE = (78, 78, 88), (58, 58, 68)
 
     def __init__(self):
-        self.fond = degrade((L, H), (10, 6, 26), (56, 24, 50))
-        dessin.circle(self.fond, (44, 34, 62), (1060, 130), 80)
-        dessin.circle(self.fond, (236, 230, 200), (1060, 130), 58)
-        dessin.circle(self.fond, (218, 212, 184), (1044, 116), 9)  # des cratères
-        dessin.circle(self.fond, (218, 212, 184), (1078, 150), 6)
+        self.fond = degrade((L, H), (8, 8, 28), (46, 26, 60))
+        dessin.circle(self.fond, (40, 36, 66), (1210, 80), 52)
+        dessin.circle(self.fond, (236, 230, 200), (1210, 80), 36)
+        dessin.circle(self.fond, (218, 212, 184), (1198, 70), 6)
         des = random.Random(7)
-        self.etoiles = [(des.uniform(0, L), des.uniform(0, 430), des.uniform(0.6, 1.7)) for _ in range(80)]
+        self.etoiles = [(des.uniform(0, L), des.uniform(0, 330), des.uniform(0.6, 1.6)) for _ in range(80)]
+        # les fenêtres et les rideaux des étages (allumés, agités par le vent quand ça bouge)
+        self.fenetres, self.rideaux, self.balcons = [], [], []
+        for x0, x1, n in (self.BASSE, self.HAUTE):
+            for k in range(n):
+                bas = self.REZ - k * self.ETAGE
+                self.balcons.append((x0, x1, bas))
+                for x in range(x0 + 14, x1 - 24, 38):
+                    self.fenetres.append((x, bas - self.ETAGE + 6, 20, self.ETAGE - 12, des.random()))
+                for x in range(x0 + 40, x1 - 20, 76):
+                    self.rideaux.append((x + des.uniform(-8, 8), bas - self.ETAGE + 2, des.uniform(0, 6)))
         self.devant = pygame.Surface((L * ZOOM, H * ZOOM), pygame.SRCALPHA)
-        self.dessiner_chateau(self.devant)
+        self.dessiner_bled(self.devant)
 
-    # ---- ce qui ne bouge pas : la colline et le château, dessinés une fois ----
+    # ---- ce qui ne bouge pas : les Alpes, le bâtiment, la cour, dessinés une fois ----
 
-    def briques(self, s, x, y, w, h):
-        for k, yy in enumerate(range(int(y) + 14, int(y + h), 14)):
-            dessin.line(s, self.JOINT, (x, yy), (x + w, yy), 1)
-            for xx in range(int(x) + (14 if k % 2 else 0), int(x + w), 28):
-                dessin.line(s, self.JOINT, (xx, yy), (xx, min(yy + 14, y + h)), 1)
-
-    def creneaux(self, s, x, y, w):
-        for xx in range(int(x), int(x + w), 32):
-            dessin.rect(s, self.PIERRE, (xx, y - 18, 18, 18))
-            dessin.line(s, self.CLAIR, (xx, y - 18), (xx + 18, y - 18), 2)
-
-    def tour(self, s, x, y, w, h, sommet):
-        dessin.rect(s, self.PIERRE, (x, y, w, h))
-        dessin.rect(s, self.OMBRE, (x + w * 0.72, y, w * 0.28, h))  # le côté à l'ombre
-        self.briques(s, x, y, w, h)
-        dessin.rect(s, self.CLAIR, (x - 8, y - 6, w + 16, 12))      # la corniche
-        for cx in range(int(x - 6), int(x + w + 6), 12):
-            dessin.rect(s, self.OMBRE, (cx, y + 6, 6, 6))
-        base, milieu = y - 4, x + w / 2
-        dessin.polygon(s, self.TOIT, [(x - 14, base), (milieu, sommet), (x + w + 14, base)])
-        dessin.polygon(s, self.TOIT_OMBRE, [(milieu, sommet), (x + w + 14, base), (milieu, base)])
-        for k in range(1, 7):  # les rangées de tuiles
-            u = k / 7
-            yy, demi = base - (base - sommet) * u, (w / 2 + 14) * (1 - u)
-            dessin.line(s, (28, 20, 44), (milieu - demi, yy), (milieu + demi, yy), 2)
-        dessin.line(s, (40, 30, 60), (milieu, sommet), (milieu, sommet - 26), 2)  # le mât
-
-    def dessiner_chateau(self, s):
-        nuit = (22, 16, 30)
-        dessin.polygon(s, nuit, [(0, H), (0, 600), (200, 572), (380, 556), (900, 556), (1080, 570),
-                                 (L, 600), (L, H)])
-        for x, y, sens in ((140, 594, 1), (1150, 600, -1)):  # deux arbres morts
-            dessin.line(s, nuit, (x, y), (x, y - 110), 8)
-            for h, l in ((-60, 50), (-85, 38), (-100, 26)):
-                dessin.line(s, nuit, (x, y + h), (x + sens * l, y + h - 30), 4)
-                dessin.line(s, nuit, (x, y + h + 12), (x - sens * l * 0.7, y + h - 14), 3)
-        bas = 580                                            # les murs s'enfoncent dans la colline
-        for x in (230, 960):  # les remparts, derrière
-            dessin.rect(s, self.OMBRE, (x, 420, 100, bas - 420))
-            self.briques(s, x, 420, 100, bas - 420)
-            for xx in range(x, x + 100, 26):
-                dessin.rect(s, self.OMBRE, (xx, 404, 14, 16))
-        self.tour(s, 560, 120, 160, 200, 20)                 # le donjon
-        self.tour(s, 722, 176, 28, 110, 128)                 # sa tourelle
-        dessin.rect(s, self.PIERRE, (400, 280, 480, bas - 280))  # le corps du château
-        dessin.rect(s, self.OMBRE, (800, 280, 80, bas - 280))
-        self.briques(s, 400, 280, 480, bas - 280)
-        self.creneaux(s, 400, 280, 480)
-        dessin.line(s, self.CLAIR, (400, 425), (880, 425), 3)  # un bandeau de pierre
-        self.tour(s, 330, 230, 80, bas - 230, 120)           # les deux grandes tours
-        self.tour(s, 870, 230, 80, bas - 230, 120)
-        for i, r in enumerate(FENETRES):                     # linteaux et appuis des fenêtres
-            dessin.rect(s, self.CLAIR, (r.x - 10, r.y - 14, r.w + 20, 10), border_radius=3)
-            dessin.rect(s, self.CLAIR, (r.x - 6, r.bottom + 3, r.w + 12, 6), border_radius=2)
-        for x, y in self.PETITES:                            # cadres des petites fenêtres
-            dessin.rect(s, self.CLAIR, (x - 4, y - 4, 28, 38), 2, border_radius=10)
-        dessin.rect(s, self.CLAIR, (608, 480, 64, 90), border_radius=26)  # le portail
-        dessin.rect(s, (20, 14, 26), (614, 486, 52, 84), border_radius=22)
-        for x in range(620, 664, 9):                         # la herse
-            dessin.line(s, (74, 66, 84), (x, 492), (x, 570), 2)
-        for y in range(496, 570, 12):
-            dessin.line(s, (74, 66, 84), (616, y), (664, y), 2)
-        for x, y in self.TORCHES:
-            dessin.line(s, (60, 50, 60), (x, y + 18), (x, y), 3)
-        lierre = [(334, 566), (346, 520), (338, 490), (352, 460), (342, 430), (356, 400)]
-        for (xa, ya), (xb, yb) in zip(lierre, lierre[1:]):   # du lierre sur la tour
-            dessin.line(s, (28, 52, 34), (xa, ya), (xb, yb), 3)
-            dessin.circle(s, (34, 70, 40), (xb + 5, yb + 4), 4)
-            dessin.circle(s, (34, 70, 40), (xb - 5, yb + 10), 3)
-        # l'ombre au pied des murs : le château est posé, pas suspendu
-        ombre = pygame.Surface((_z(840), _z(40)), pygame.SRCALPHA)
-        for k in range(_z(40)):
-            ombre.fill((8, 4, 14, round(150 * k / _z(40))), (0, k, _z(840), 1))
-        s.blit(ombre, (_z(225), _z(528)))
-        # la butte, devant : elle recouvre le pied des murs, avec des rochers et de l'herbe
-        butte = [(0, H), (0, 610), (120, 594), (200, 576), (232, 562), (262, 566), (296, 552),
-                 (334, 558), (372, 552), (408, 562), (612, 572), (668, 572), (872, 562),
-                 (906, 552), (946, 558), (984, 550), (1022, 564), (1060, 560), (1090, 578),
-                 (1180, 596), (L, 606), (L, H)]
-        dessin.polygon(s, (26, 19, 34), butte)
-        for x, y, w, h in ((282, 548, 52, 24), (360, 550, 36, 18), (230, 556, 40, 18),
-                           (896, 548, 50, 24), (970, 546, 44, 22), (1036, 556, 40, 18),
-                           (520, 566, 30, 12), (760, 566, 34, 12)):
-            dessin.ellipse(s, (44, 38, 54), (x, y, w, h))           # les rochers
-            dessin.ellipse(s, (58, 52, 70), (x + 4, y + 2, w * 0.6, h * 0.4))
-        des = random.Random(3)
-        for _ in range(40):                                  # des touffes d'herbe sèche
-            x = des.uniform(200, 1090)
-            y = 562 + des.uniform(0, 12)
-            for d in (-3, 0, 3):
-                dessin.line(s, (40, 46, 38), (x, y), (x + d * 1.5, y - 7 - abs(d)), 1)
-        for x in (240, 1050):  # les remparts finissent dans les rochers
-            dessin.ellipse(s, (36, 30, 46), (x - 20, 568, 70, 20))
-        dessin.polygon(s, (36, 28, 42), [(612, 570), (668, 570), (780, H), (500, H)])  # le chemin
-        for k in range(6):
-            y = 580 + k * 26
-            dessin.line(s, (46, 36, 52), (640 - 22 - k * 22, y), (640 + 22 + k * 22, y), 1)
+    def dessiner_bled(self, s):
+        alpes = [(0, 300), (70, 250), (130, 272), (210, 226), (290, 262), (370, 214), (450, 258),
+                 (530, 232), (600, 280), (1170, 280), (1210, 246), (1250, 264), (L, 240), (L, 330), (0, 330)]
+        dessin.polygon(s, (30, 26, 52), alpes)
+        for x, y in ((70, 250), (210, 226), (370, 214), (530, 232), (1210, 246)):
+            dessin.polygon(s, (110, 110, 140), [(x, y), (x - 14, y + 12), (x + 14, y + 12)])
+        haut_basse = self.REZ - self.BASSE[2] * self.ETAGE
+        haut_haute = self.REZ - self.HAUTE[2] * self.ETAGE
+        bois = melange(MELEZE, (20, 14, 30), 0.62)                # le mélèze, la nuit
+        for (x0, x1, _), haut in ((self.BASSE, haut_basse), (self.HAUTE, haut_haute)):
+            dessin.rect(s, bois, (x0, haut, x1 - x0, self.REZ - haut))
+            for x in range(x0, x1, 9):  # les lames de bois
+                dessin.line(s, melange(bois, (0, 0, 0), 0.2), (x, haut), (x, self.REZ), 1)
+            dessin.rect(s, (96, 96, 108), (x0 - 12, haut - 6, x1 - x0 + 24, 6))  # l'avant-toit
+        dessin.rect(s, melange(bois, (0, 0, 0), 0.3), (self.HAUTE[0], haut_haute, 14, self.REZ - haut_haute))
+        for x0, x1, bas in self.balcons:  # les balcons filants : dalle blanche et garde-corps
+            dessin.rect(s, (110, 110, 122), (x0 - 12, bas - 5, x1 - x0 + 24, 5))
+            dessin.line(s, (96, 96, 108), (x0 - 12, bas - 15), (x1 + 12, bas - 15), 1)
+            for x in range(x0 - 12, x1 + 12, 5):
+                dessin.line(s, (88, 88, 100), (x, bas - 15), (x, bas - 5), 1)
+        # la terrasse du 5e, sur le toit de l'aile basse : la pergola en bois
+        poutre = melange((190, 144, 88), (20, 14, 30), 0.5)
+        for x in (150, 395, 580):
+            dessin.rect(s, poutre, (x, 178, 8, haut_basse - 178))
+        dessin.rect(s, poutre, (130, 174, 470, 8))
+        for x in range(140, 600, 22):
+            dessin.rect(s, melange(poutre, (0, 0, 0), 0.2), (x, 168, 6, 8))
+        dessin.line(s, (120, 120, 132), (104, haut_basse - 14), (606, haut_basse - 14), 2)  # sa balustrade
+        for x in range(104, 606, 6):
+            dessin.line(s, (106, 106, 118), (x, haut_basse - 14), (x, haut_basse - 6), 1)
+        # le rez et le sous-sol, en béton, avec de grandes vitres
+        dessin.rect(s, self.BETON, (self.BASSE[0], self.REZ, self.HAUTE[1] - self.BASSE[0], self.SOL - self.REZ))
+        dessin.rect(s, self.BETON_SOMBRE, (self.BASSE[0], 492, self.HAUTE[1] - self.BASSE[0], self.SOL - 492))
+        dessin.line(s, (98, 98, 110), (self.BASSE[0], 492), (self.HAUTE[1], 492), 2)
+        for x in (130, 430, 920, 1010, 1100):  # des vitres du rez (l'épicerie, les bureaux…)
+            dessin.rect(s, (24, 26, 40), (x, 410, 56 if x != 430 else 66, 74))
+        dessin.rect(s, (20, 20, 30), (450, 420, 26, 72))  # la porte d'entrée
+        for x in (180, 720, 900, 1060):  # des soupiraux de la vélostation
+            dessin.rect(s, (18, 20, 30), (x, 504, 70, 26))
+        # la cour, devant : le gravier, les pins, l'abri à vélos, un banc, les ganivelles
+        dessin.rect(s, (30, 26, 36), (0, self.SOL, L, H - self.SOL))
+        dessin.rect(s, (40, 36, 48), (0, self.SOL, L, 6))
+        des = random.Random(5)
+        for _ in range(160):
+            dessin.circle(s, (46, 42, 54), (des.uniform(0, L), des.uniform(self.SOL + 8, H)), 1)
+        for x, h in ((40, 230), (1240, 250), (1000, 150), (330, 120)):  # des pins
+            dessin.rect(s, (30, 22, 20), (x - 4, self.SOL + 40 - h * 0.2, 8, h * 0.2))
+            for k in range(3):
+                y = self.SOL + 40 - h * 0.2 - k * h * 0.25
+                w = h * (0.32 - k * 0.07)
+                dessin.polygon(s, (16, 30, 26), [(x - w, y), (x, y - h * 0.4), (x + w, y)])
+        dessin.rect(s, (70, 72, 80), (760, 586, 180, 6))  # l'abri à vélos
+        for x in (770, 930):
+            dessin.line(s, (60, 62, 70), (x, 592), (x, 648), 3)
+        for x in (800, 860, 900):
+            dessin.circle(s, (40, 40, 46), (x, 636), 12, 2)
+            dessin.circle(s, (40, 40, 46), (x + 22, 636), 12, 2)
+        dessin.rect(s, (70, 52, 40), (560, 640, 110, 8))  # un banc
+        for x in (566, 656):
+            dessin.rect(s, (50, 40, 34), (x, 648, 6, 16))
+        for x in range(0, L, 9):  # les ganivelles, tout devant
+            dessin.line(s, (58, 46, 40), (x, 690), (x + 2, 720), 3)
+        dessin.line(s, (48, 38, 34), (0, 700), (L, 700), 2)
 
     # ---- ce qui bouge ----
 
@@ -188,39 +168,42 @@ class Dehors:
         e.blit(self.fond, (0, 0))
         for x, y, r in self.etoiles:
             dessin.circle(e, (230, 230, 255), (x, y), r * (0.6 + 0.4 * math.sin(t * 2 + x)))
-        for k in range(3):  # des nuages passent devant la lune
+        for k in range(3):  # des nuages passent
             x = (k * 520 + t * 14) % (L + 400) - 200
-            dessin.ellipse(e, (32, 22, 46), (x, 110 + k * 70, 260, 44))
-            dessin.ellipse(e, (32, 22, 46), (x + 60, 92 + k * 70, 150, 40))
+            dessin.ellipse(e, (30, 22, 46), (x, 60 + k * 50, 260, 40))
+            dessin.ellipse(e, (30, 22, 46), (x + 60, 46 + k * 50, 150, 36))
         e.blit(self.devant, (0, 0))
-        drapeau = melange((80, 70, 96), ORANGE, fete)
-        for x, sommet in ((370, 120), (640, 20), (910, 120), (736, 128)):
-            onde = 3 * math.sin(t * 4 + x)
-            dessin.polygon(e, drapeau, [(x, sommet - 26), (x + 22, sommet - 20 + onde), (x, sommet - 14)])
-        banniere = melange((70, 40, 90), VIOLET, fete)
-        for x, y in self.BANNIERES:
-            dessin.polygon(e, banniere, [(x, y), (x + 30, y), (x + 30, y + 56), (x + 15, y + 44), (x, y + 56)])
-            if fete > 0:
-                dessin.circle(e, OR, (x + 15, y + 20), 6)
-        for k, (x, y) in enumerate(self.PETITES):  # elles s'allument avec la fête
-            allume = k < round(fete * len(self.PETITES))
-            dessin.rect(e, (255, 200, 90) if allume else (20, 18, 30), (x, y, 20, 30), border_radius=8)
-        for x, y in self.TORCHES:  # les flammes vacillent
-            h = 10 + 3 * math.sin(t * 13 + x)
-            dessin.ellipse(e, (255, 120, 30), (x - 6, y - h, 12, h + 4))
-            dessin.ellipse(e, (255, 230, 120), (x - 3, y - h * 0.6, 6, h * 0.6 + 2))
+        for x, y, w, h, hasard in self.fenetres:  # elles s'allument avec la fête
+            allume = hasard < 0.12 + 0.75 * fete
+            dessin.rect(e, (255, 204, 110) if allume else (22, 24, 38), (x, y, w, h))
+        bleu = melange(melange(RIDEAU, (20, 14, 30), 0.55), RIDEAU, fete)
+        for x, y, decal in self.rideaux:  # les rideaux bleus flottent au vent
+            onde = 3 * math.sin(t * 1.7 + decal)
+            dessin.polygon(e, bleu, [(x, y), (x + 8, y), (x + 8 + onde, y + self.ETAGE - 8),
+                                     (x + onde, y + self.ETAGE - 8)])
+        if fete > 0:  # des guirlandes et des citrouilles sur les balcons
+            n = round(fete * len(self.balcons))
+            for k, (x0, x1, bas) in enumerate(self.balcons[::-1][:n]):
+                for i, x in enumerate(range(x0, x1, 24)):
+                    c = FESTIF[(i + k) % 5] if int(t * 3 + i) % 4 else BLANC
+                    dessin.circle(e, c, (x + 12, bas - self.ETAGE + 5 + 3 * math.sin(i)), 2)
+                citrouille(e, x0 + 30 + (k * 97) % (x1 - x0 - 60), bas - 5, 6, True)
         for i, r in enumerate(FENETRES):
             if i in vignettes:
                 e.blit(vignettes[i], (_z(r.x), _z(r.y)))
             else:
                 dessin.rect(e, (18, 16, 30), r)
-            dessin.rect(e, self.OMBRE, r.inflate(4, 4), 6, border_radius=6)
+            dessin.rect(e, (34, 34, 42), r.inflate(6, 6), 4, border_radius=4)
+            ecrire(e, NOMS_FENETRES[i], 20, OR if i in allumees else (200, 200, 210),
+                   centre=(r.centerx, r.y - 11 if i != 0 else r.bottom + 10))
             if i == cible:
-                g = 8 + 4 * math.sin(t * 6)
-                dessin.rect(e, OR, r.inflate(g, g), 3, border_radius=10)
+                g = 10 + 4 * math.sin(t * 6)
+                dessin.rect(e, OR, r.inflate(g, g), 3, border_radius=8)
+        if fete > 0:  # des lampions sous la pergola
+            for k, x in enumerate(range(160, 590, 36)):
+                y = 186 + 4 * math.sin(t * 2 + k)
+                dessin.circle(e, FESTIF[k % 5], (x, y), 5)
         for k in range(round(4 * (1 - fete))):  # les chauves-souris s'en vont avec la fête
             x = (k * 370 + t * (60 + k * 15)) % (L + 200) - 100
-            y = 190 + 50 * math.sin(t * 1.3 + k) + k * 45
+            y = 150 + 40 * math.sin(t * 1.3 + k) + k * 40
             poser(e, anime("chauve_souris", t + k), x, y, echelle=0.5)
-        if fete < 0.5 and t % 7 < 0.12:  # un éclair
-            e.fill((70, 70, 80), special_flags=pygame.BLEND_RGB_ADD)

@@ -1,8 +1,8 @@
-"""Vampire en fête — un vampire redécore son château lugubre pour Halloween.
+"""Halloween au Bled — un vampire met en fête le Bled, la coopérative où l'on habite.
 Seul, à deux, ou parent et enfant, à la manette (base technique reprise de « Les Deux Amis »).
 
 Lancer avec :  .venv/bin/python jeu.py
-Les écrans (Jeu.etat) : « titre » (l'accueil devant le château), « mode » (seul, à deux,
+Les écrans (Jeu.etat) : « titre » (l'accueil dans la cour du Bled), « mode » (seul, à deux,
 parent et enfant), « nom » (chacun écrit son nom), « voyage » (d'une salle à l'autre),
 « jeu » (dans une salle), « fin » (la grande fête) et « honneur » (le tableau d'honneur).
 """
@@ -26,7 +26,7 @@ from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ec
 from partie import PERSONNAGES, Partie
 from sons import creer_sons
 
-TITRE = "Vampire en fête"
+TITRE = "Halloween au Bled"
 # le clavier à l'écran pour écrire son nom à la manette
 GRILLE = [list("ABCDEFGHIJ"), list("KLMNOPQRST"), list("UVWXYZ-"), ["Effacer", "C'est fini !"]]
 NOM_MAX = 10
@@ -69,7 +69,7 @@ class Jeu:
         self.t = 0.0
         self.titre_t = 0.0        # depuis quand on est à l'accueil (le vampire arrive)
         self.salles = {}          # salles mises en fête : elles continuent la fête, en aperçu
-        self.vignettes = {}       # leur aperçu dans leur fenêtre du château
+        self.vignettes = {}       # leur aperçu dans leur fenêtre du Bled
         self.tour_vignette = 0    # on refait un aperçu par image, chacun son tour
         self.ecran_salle = pygame.Surface((L * ZOOM, H * ZOOM))
         self.voyage = None
@@ -153,7 +153,7 @@ class Jeu:
             dessin.line(e, couleur, (x - vx * 0.07, y - vy * 0.07), (x, y), 2 if u > 0.4 else 1)
 
     def vues(self):
-        """Ce qu'on voit dans chaque fenêtre du château."""
+        """Ce qu'on voit dans chaque fenêtre du Bled."""
         return {i: self.vignettes.get(i, self.sombres[i]) for i in range(len(FENETRES))}
 
     def tout_en_fete(self):
@@ -392,7 +392,7 @@ class Jeu:
             self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
             self.dessiner_feux(e)
             poser(e, anime("vampire", self.t), 640, 236 - 8 * abs(math.sin(self.t * 3)), echelle=0.8)
-            ecrire(e, "Tout le château est en fête !", 76, OR, centre=(L // 2, 620))
+            ecrire(e, "Tout le Bled est en fête !", 76, OR, centre=(L // 2, 620))
             if self.reussite:
                 ecrire(e, f"En {palmares.duree(self.reussite['temps'])} !   "
                           f"{BOUTONS['saut'].capitalize()} : le tableau d'honneur", 32, BLANC, centre=(L // 2, 685))
@@ -413,7 +413,7 @@ class Jeu:
                        centre=(L // 2, 400))
 
     def dessiner_accueil(self, e):
-        """Le vampire arrive au château en volant et se pose sur la colline."""
+        """Le vampire arrive en volant et se pose dans la cour du Bled."""
         self.dehors.dessiner(e, self.t, self.vues(), set(self.salles), cible=self.niveau)
         u = self.titre_t / 3.0
         if u < 1:
@@ -422,7 +422,7 @@ class Jeu:
         else:
             poser(e, anime("vampire", self.t), ARRIVEE[0], ARRIVEE[1] - 19, echelle=0.6)
         ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 56))
-        ecrire(e, "Rends le château tout beau pour Halloween !", 34, BLANC, centre=(L // 2, 116))
+        ecrire(e, "Mets le Bled en fête pour Halloween !", 34, BLANC, centre=(L // 2, 116))
         salle = f"Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
         consigne = f"Appuie sur le {BOUTONS['saut']} pour commencer"
         if self.ouvertes > 1:
