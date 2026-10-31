@@ -29,7 +29,7 @@ const SEUIL = 0.5;
 
 // Les touches dont on empêche l'effet du navigateur (défiler la page, revenir en arrière…).
 const TOUCHES_DU_JEU = new Set([...Object.values(CLAVIER).flat(),
-  "Backspace", "Enter", "Escape", "ArrowUp", "Tab", "f", "m", "r"]);
+  "Backspace", "Enter", "Escape", "ArrowUp", "Tab", "f", "m"]);
 
 /** Le nom d'une touche, comme dans CLAVIER_DUO. */
 export function nom_touche(ev) {
