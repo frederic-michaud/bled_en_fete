@@ -496,13 +496,16 @@ ANIMES = {
     "vampire": (lambda ph: vampire(ph, "repos"), 16, 0.25),
     "vampire_marche": (lambda ph: vampire(ph, "marche"), 12, 1.0),  # suit les pas, pas le temps
     "vampire_saut": (lambda ph: vampire(ph, "saut"), 1, 1.0),
-    # la vampirette (deuxième joueur à deux) et le petit vampire (l'enfant)
+    # la vampirette (deuxième joueur à deux), le parent (cape orange) et l'enfant (rouge)
     "vampirette": (lambda ph: vampire(ph, "repos", "#7a2bd6", "#ff5aa0"), 16, 0.25),
     "vampirette_marche": (lambda ph: vampire(ph, "marche", "#7a2bd6", "#ff5aa0"), 12, 1.0),
     "vampirette_saut": (lambda ph: vampire(ph, "saut", "#7a2bd6", "#ff5aa0"), 1, 1.0),
-    "petit": (lambda ph: vampire(ph, "repos", "#e8781e"), 16, 0.3),
-    "petit_marche": (lambda ph: vampire(ph, "marche", "#e8781e"), 12, 1.0),
-    "petit_saut": (lambda ph: vampire(ph, "saut", "#e8781e"), 1, 1.0),
+    "parent": (lambda ph: vampire(ph, "repos", "#e8781e"), 16, 0.25),
+    "parent_marche": (lambda ph: vampire(ph, "marche", "#e8781e"), 12, 1.0),
+    "parent_saut": (lambda ph: vampire(ph, "saut", "#e8781e"), 1, 1.0),
+    "petit": (lambda ph: vampire(ph, "repos"), 16, 0.3),
+    "petit_marche": (lambda ph: vampire(ph, "marche"), 12, 1.0),
+    "petit_saut": (lambda ph: vampire(ph, "saut"), 1, 1.0),
     "squelette": (lambda ph: squelette(ph, False), 12, 1.5),
     "squelette_danse": (lambda ph: squelette(ph, True), 40, 0.32),
     "chauve_souris": (chauve_souris, 8, 3.0),

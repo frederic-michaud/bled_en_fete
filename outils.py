@@ -22,6 +22,7 @@ FESTIF = [ORANGE, VIOLET, ROSE, VERT, OR]
 TAILLES = {
     "vampire": (54, 64), "vampire_marche": (54, 64), "vampire_saut": (54, 64),
     "vampirette": (54, 64), "vampirette_marche": (54, 64), "vampirette_saut": (54, 64),
+    "parent": (54, 64), "parent_marche": (54, 64), "parent_saut": (54, 64),
     "petit": (41, 48), "petit_marche": (41, 48), "petit_saut": (41, 48),
     "courge": (56, 56), "soupe": (60, 68),
     "squelette": (40, 60), "squelette_danse": (40, 60), "squelette_tas": (44, 33),

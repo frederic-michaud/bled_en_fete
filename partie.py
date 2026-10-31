@@ -42,7 +42,7 @@ ELASTIQUE, RAPPEL_MAX = 3.5, 500.0      # vitesse de rappel par pixel d'étireme
 # les personnages de chaque façon de jouer : (dessin, taille de leur corps)
 PERSONNAGES = {"solo": [("vampire", (26, 52))],
                "duo": [("vampire", (26, 52)), ("vampirette", (26, 52))],
-               "parent": [("vampire", (26, 52)), ("petit", (22, 42))]}
+               "parent": [("parent", (26, 52)), ("petit", (22, 42))]}
 
 # --------------------------------------------------------------------------
 # Décor
