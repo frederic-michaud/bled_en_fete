@@ -1,6 +1,7 @@
 """Les outils de dessin communs : taille de l'écran, couleurs, dessin agrandi pour les
 écrans Retina, texte, et images (des SVG fabriqués par animations.py)."""
 import io
+import os
 
 import manettes  # noqa: F401  (règle les options SDL des manettes avant pygame)
 import pygame
@@ -10,9 +11,29 @@ import animations
 L, H = 1280, 720            # taille de l'écran de jeu
 DT = 1 / 60                 # 60 images par seconde
 T = 40                      # taille d'une tuile du château
+
+
+def _zoom_ecran():
+    """2 sur un écran haute définition (Retina) : on dessine deux fois plus fin pour rester
+    net ; 1 sur un écran ordinaire : quatre fois moins de points à dessiner, le jeu reste
+    rapide sur un vieil ordinateur. JEU_ZOOM=1 ou 2 force le choix."""
+    if os.environ.get("JEU_ZOOM") in ("1", "2"):
+        return int(os.environ["JEU_ZOOM"])
+    if os.environ.get("SDL_VIDEODRIVER") == "dummy":
+        return 2  # sans écran (vérifications) : comme sur le Mac de développement
+    try:
+        pygame.display.init()
+        essai = pygame.Window(size=(100, 100), allow_high_dpi=True, hidden=True)
+        points = essai.get_surface().get_width()
+        essai.destroy()
+        return 2 if points >= 150 else 1
+    except (pygame.error, AttributeError):
+        return 2
+
+
 # Tout le jeu est pensé sur un écran de 1280 x 720, mais dessiné ZOOM fois plus fin
-# pour rester net sur les écrans haute définition (Retina).
-ZOOM = 2
+# sur les écrans haute définition (Retina).
+ZOOM = _zoom_ecran()
 
 BLANC, NOIR, OR = (255, 255, 255), (20, 20, 30), (255, 206, 60)
 ORANGE, VIOLET, ROSE, VERT = (255, 138, 30), (155, 77, 255), (255, 90, 160), (76, 217, 100)

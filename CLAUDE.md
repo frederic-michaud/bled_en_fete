@@ -87,7 +87,8 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   `Commande` par joueur ; `ensemble()` les fusionne pour les menus. `verifier.py` : les vérifications.
 
 ## Technique à garder
-- Écran pensé en 1280×720, dessiné `ZOOM`=2 fois plus fin (Retina) sur une Surface,
+- Écran pensé en 1280×720, dessiné `ZOOM` fois plus fin sur une Surface (2 sur un écran
+  Retina, 1 sinon, choisi au lancement par `outils._zoom_ecran` ; `JEU_ZOOM=1` le force),
   affichée par `pygame.Window(resizable, allow_high_dpi)` + `video.Renderer(vsync)` +
   `Texture(streaming=True)`. Si l'écran n'existe pas, le jeu tourne quand même.
 - Manettes : `os.environ["SDL_JOYSTICK_MFI"]="0"` **avant** `import pygame` (sinon la
