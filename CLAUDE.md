@@ -1,5 +1,15 @@
 # Halloween au Bled — jeu d'Halloween à la manette, seul ou à deux
 
+**Version JavaScript** (branche `js`, dossier `js/`) : le même jeu réécrit en JavaScript
+simple (modules ES, canvas 2D, Web Audio, aucune bibliothèque ni compilation), pour le web :
+chargement immédiat, haute définition, 60 images/s. C'est un port fidèle des fichiers
+Python (mêmes noms, mêmes règles : la logique des salles donne les mêmes trajectoires) ;
+`js/INTERFACES.md` décrit le rôle de chaque fichier et les conventions (toiles, points du
+jeu). Essayer : `python3 -m http.server` à la racine puis `http://localhost:8000/js/`.
+`js/publier.sh` la publie sur GitHub Pages, à `…/bled_en_fete/js/` (à côté de la version
+Python pour le web, archivée : étiquette `archive/web-pygbag`). Les essais automatiques
+(Playwright, comparaisons avec le Python) vont dans `js/essais/`, ignoré par git.
+
 **Version web** (branche `web`) : le même jeu dans un navigateur, avec pygbag (Python en
 WebAssembly). `./construire_web.sh` copie les fichiers du jeu dans `site/` (pas dans git),
 fait aussi chaque image en PNG (si le navigateur ne lit pas les SVG) et fabrique
