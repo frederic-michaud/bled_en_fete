@@ -112,16 +112,24 @@ def police(taille):
     return _polices[taille]
 
 
+_textes = {}
+
+
 def ecrire(surf, msg, taille, couleur, centre=None, gauche=None, ombre=NOIR):
     f = police(taille)
-    img = f.render(msg, True, couleur)
+    cle = (msg, taille, couleur, ombre)
+    if cle not in _textes:  # fabriquer un texte coûte cher : on le garde
+        if len(_textes) > 600:
+            _textes.clear()
+        _textes[cle] = (f.render(msg, True, couleur), None if ombre is None else f.render(msg, True, ombre))
+    img, img_ombre = _textes[cle]
     r = img.get_rect()
     if centre:
         r.center = (_z(centre[0]), _z(centre[1]))
     else:
         r.topleft = (_z(gauche[0]), _z(gauche[1]))
-    if ombre is not None:
-        surf.blit(f.render(msg, True, ombre), r.move(ZOOM + 1, ZOOM + 1))
+    if img_ombre is not None:
+        surf.blit(img_ombre, r.move(ZOOM + 1, ZOOM + 1))
     surf.blit(img, r)
     return r
 

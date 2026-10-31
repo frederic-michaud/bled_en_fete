@@ -18,17 +18,19 @@ ACTIONS = ("gauche", "droite", "haut", "bas", "saut", "action", "coucou", "pause
 FICHIER = Path(__file__).with_name("manettes.json")
 
 # Le clavier marche toujours, en plus des manettes. À deux, chacun sa moitié du clavier.
+# On désigne les touches par la lettre écrite dessus : ça marche en AZERTY, QWERTZ et QWERTY.
+# Joueur 1 à gauche du clavier (Q ou A, D, espace, X, C), joueur 2 à droite (flèches, K, L).
 CLAVIER_DUO = (
-    {"gauche": (pygame.K_LEFT,), "droite": (pygame.K_RIGHT,), "haut": (), "bas": (pygame.K_DOWN,),
-     "saut": (pygame.K_UP, pygame.K_RSHIFT), "action": (pygame.K_p,),
-     "coucou": (pygame.K_o,), "pause": ()},
     {"gauche": (pygame.K_q, pygame.K_a), "droite": (pygame.K_d,), "haut": (), "bas": (pygame.K_s,),
-     "saut": (pygame.K_z, pygame.K_w, pygame.K_SPACE), "action": (pygame.K_e,),
-     "coucou": (pygame.K_x,), "pause": ()},
+     "saut": (pygame.K_SPACE, pygame.K_z, pygame.K_w), "action": (pygame.K_x,),
+     "coucou": (pygame.K_c,), "pause": (pygame.K_p,)},
+    {"gauche": (pygame.K_LEFT,), "droite": (pygame.K_RIGHT,), "haut": (), "bas": (pygame.K_DOWN,),
+     "saut": (pygame.K_UP, pygame.K_RSHIFT), "action": (pygame.K_k,),
+     "coucou": (pygame.K_l,), "pause": (pygame.K_p,)},
 )
-CLAVIER = {a: CLAVIER_DUO[0][a] + CLAVIER_DUO[1][a] for a in ACTIONS}
-NOM_CLAVIER = "Clavier : flèches, espace, P, O"
-NOMS_CLAVIER_DUO = ("clavier : flèches, P, O", "clavier : Z Q S D, espace, E, X")
+CLAVIER = {a: CLAVIER_DUO[0][a] + CLAVIER_DUO[1][a] for a in ACTIONS}  # seul : tout le clavier
+NOM_CLAVIER = "Clavier : flèches, espace, X, C"
+NOMS_CLAVIER_DUO = ("clavier : Q D, espace, X, C", "clavier : flèches, K, L")
 
 
 class Commande:

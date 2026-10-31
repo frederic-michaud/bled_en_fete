@@ -139,6 +139,29 @@ class Dehors:
                         self.rideaux.append((x + 22, bas - self.ETAGE + 2, des.uniform(0, 6)))
         self.devant = pygame.Surface((L * ZOOM, H * ZOOM), pygame.SRCALPHA)
         self.dessiner_bled(self.devant)
+        # les étoiles qui scintillent : seulement là où on voit le ciel
+        self.etoiles = [(x, y, r) for x, y, r in self.etoiles if self.devant.get_at((_z(x), _z(y)))[3] == 0]
+        self.compose = (None, None)  # (fête, image) : le ciel, les nuages, le Bled et ses fenêtres
+
+    def composer(self, fete):
+        """Le décor fixe en une seule image opaque (rapide à afficher) : le ciel, des nuages,
+        le Bled et ses fenêtres, allumées selon la fête. Refaite seulement quand la fête change."""
+        s = self.fond.copy()
+        for k, x in enumerate((90, 640, 1050)):  # des nuages
+            dessin.ellipse(s, (30, 22, 46), (x, 60 + k * 50, 260, 40))
+            dessin.ellipse(s, (30, 22, 46), (x + 60, 46 + k * 50, 150, 36))
+        s.blit(self.devant, (0, 0))
+        rideau = melange(melange(RIDEAU, (20, 14, 30), 0.55), RIDEAU, fete)
+        for x, y, w, h, hasard, ferme in self.fenetres:  # elles s'allument avec la fête
+            allume = hasard < 0.12 + 0.75 * fete
+            if ferme:  # le rideau tiré, éclairé par derrière si on est là
+                d.rect(s, melange(rideau, (255, 214, 140), 0.45) if allume else melange(rideau, (0, 0, 0), 0.3),
+                       (x, y, w, h))
+                for k in (5, 11, 17):
+                    d.line(s, melange(rideau, (0, 0, 0), 0.3), (x + k, y), (x + k, y + h), 1)
+            else:
+                d.rect(s, (255, 204, 110) if allume else (22, 24, 38), (x, y, w, h))
+        self.compose = (fete, s)
 
     # ---- ce qui ne bouge pas : la lune, les Alpes, le bâtiment, la cour, dessinés une fois ----
 
@@ -259,24 +282,11 @@ class Dehors:
 
     def dessiner(self, e, t, vignettes, allumees, cible=None):
         fete = len(allumees) / len(FENETRES)
-        e.blit(self.fond, (0, 0))
+        if self.compose[0] != fete:
+            self.composer(fete)
+        e.blit(self.compose[1], (0, 0))
         for x, y, r in self.etoiles:
             dessin.circle(e, (230, 230, 255), (x, y), r * (0.6 + 0.4 * math.sin(t * 2 + x)))
-        for k in range(3):  # des nuages passent
-            x = (k * 520 + t * 14) % (L + 400) - 200
-            dessin.ellipse(e, (30, 22, 46), (x, 60 + k * 50, 260, 40))
-            dessin.ellipse(e, (30, 22, 46), (x + 60, 46 + k * 50, 150, 36))
-        e.blit(self.devant, (0, 0))
-        rideau = melange(melange(RIDEAU, (20, 14, 30), 0.55), RIDEAU, fete)
-        for x, y, w, h, hasard, ferme in self.fenetres:  # elles s'allument avec la fête
-            allume = hasard < 0.12 + 0.75 * fete
-            if ferme:  # le rideau tiré, éclairé par derrière si on est là
-                d.rect(e, melange(rideau, (255, 214, 140), 0.45) if allume else melange(rideau, (0, 0, 0), 0.3),
-                            (x, y, w, h))
-                for k in (5, 11, 17):
-                    d.line(e, melange(rideau, (0, 0, 0), 0.3), (x + k, y), (x + k, y + h), 1)
-            else:
-                d.rect(e, (255, 204, 110) if allume else (22, 24, 38), (x, y, w, h))
         bleu = melange(melange(RIDEAU, (20, 14, 30), 0.55), RIDEAU, fete)
         for x, y, decal in self.rideaux:  # les rideaux bleus flottent au vent
             onde = 3 * math.sin(t * 1.7 + decal)

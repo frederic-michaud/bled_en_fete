@@ -25,7 +25,7 @@ except ImportError:  # dans un navigateur
 import musique
 import palmares
 from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, agrandi, bezier, doux, vignette, zoomer
-from niveaux import BOUTONS, MODES, NIVEAUX
+from niveaux import BOUTONS, CROIX, MODES, NIVEAUX, le
 from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, WEB, ZOOM, anime, dessin, ecrire,
                     melange, police, poser, preparer_images)
 from partie import PERSONNAGES, Partie
@@ -51,6 +51,8 @@ class Jeu:
         else:
             self.ouvrir_fenetre()
         self.horloge = pygame.time.Clock()
+        self.retard = 0.0         # le temps réel pas encore rattrapé (voir avancer)
+        self.fond_menu = None     # le Bled assombri derrière les menus, dessiné une fois
         self.sons = creer_sons()
         self.musique = musique.Musique()
         self.entrees = manettes.Entrees()
@@ -269,8 +271,18 @@ class Jeu:
     def joueurs(self):
         return 1 if self.mode == "solo" else 2
 
-    def image(self, cmds=None):
-        """Calcule et dessine une image du jeu. cmds : une Commande par joueur (ou une
+    def avancer(self, ecoule):
+        """Fait avancer le jeu du temps réellement écoulé (secondes), par pas de DT (au plus
+        4), et ne dessine que le dernier : si l'ordinateur ou le navigateur n'arrive pas à
+        60 images par seconde, le jeu saute des images au lieu de ralentir."""
+        self.retard = min(self.retard + ecoule, 4 * DT)
+        n = max(1, min(4, round(self.retard / DT)))
+        self.retard = max(-DT, self.retard - n * DT)
+        for k in range(n):
+            self.image(dessiner=k == n - 1)
+
+    def image(self, cmds=None, dessiner=True):
+        """Calcule une image du jeu (et la dessine). cmds : une Commande par joueur (ou une
         seule) ; sans rien, on lit les manettes et le clavier."""
         echap = entree = False
         tape = []  # ce qu'on tape au clavier en écrivant son nom
@@ -376,7 +388,8 @@ class Jeu:
         if self.etat != "jeu":
             self.animer_salles()
         self.musique.maj(self.ambiance(), DT)
-        self.dessiner()
+        if dessiner:
+            self.dessiner()
 
     def colonne_de(self, equipe):
         """La ligne de cette équipe dans sa colonne (0 est « nouveau »)."""
@@ -465,20 +478,26 @@ class Jeu:
             self.rendu.present()
 
     def lancer(self):
+        ecoule = DT
         while True:
-            self.image()
+            self.avancer(ecoule)
             self.afficher()
-            self.horloge.tick(60)
+            ecoule = self.horloge.tick(60) / 1000
 
     # ---- dessin des écrans ----
 
     def dessiner(self):
         e = self.ecran
+        if self.etat not in ("nom", "honneur", "confirmer"):
+            self.fond_menu = None
         if self.etat == "titre":
             self.dessiner_accueil(e)
         elif self.etat in ("nom", "honneur", "confirmer"):
-            self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
-            e.blit(self.voile, (0, 0))
+            if self.fond_menu is None:  # le Bled assombri, figé derrière les menus
+                self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
+                e.blit(self.voile, (0, 0))
+                self.fond_menu = e.copy()
+            e.blit(self.fond_menu, (0, 0))
             {"nom": self.dessiner_nom, "honneur": self.dessiner_honneur,
              "confirmer": self.dessiner_confirmer}[self.etat](e)
         elif self.etat == "voyage":
@@ -513,12 +532,15 @@ class Jeu:
             poser(e, anime(nom, self.t + k), ARRIVEE[0] + 34 * k, ARRIVEE[1] - 32 * echelle, echelle=echelle)
         ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 64))
         salle = f"{' et '.join(self.noms[:self.joueurs()])} — Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
-        consigne = f"Appuie sur le {BOUTONS['saut']} pour commencer"
+        consigne = f"Appuie sur {le(BOUTONS['saut'])} pour commencer"
         if self.ouvertes > 1:
             salle = f"<   {salle}   >"
-            consigne += "   (la croix : choisir la salle)"
+            consigne += f"   ({CROIX} : choisir la salle)"
         ecrire(e, salle, 38, BLANC, centre=(L // 2, 624))
         ecrire(e, consigne, 32, OR, centre=(L // 2, 664))
+        if WEB and self.joueurs() == 2:  # au clavier, à deux : les touches de chacun
+            ecrire(e, f"{self.noms[0]} : Q D, espace, X bonbon, C couteau      "
+                      f"{self.noms[1]} : flèches, K bonbon, L couteau", 24, BLANC, centre=(L // 2, 700))
 
     def dessiner_danse(self, e):
         """La fin : les personnages dansent sur la terrasse du 5e (ils sautillent, se
@@ -559,8 +581,11 @@ class Jeu:
                 if choisi:
                     dessin.rect(e, OR, (x - w / 2, y - 30, w, 60), 3, border_radius=12)
                 ecrire(e, texte, 34 if large else 44, OR if choisi else BLANC, centre=(x, y))
-        ecrire(e, f"La croix : choisir une lettre   {BOUTONS['saut'].capitalize()} : l'écrire   "
-                  f"{BOUTONS['pause'].capitalize()} : effacer", 30, OR, centre=(L // 2, 640))
+        if WEB:  # au clavier, on tape son nom
+            ecrire(e, "Tape ton nom au clavier, puis Entrée", 30, OR, centre=(L // 2, 640))
+        else:
+            ecrire(e, f"La croix : choisir une lettre   {BOUTONS['saut'].capitalize()} : l'écrire   "
+                      f"{BOUTONS['pause'].capitalize()} : effacer", 30, OR, centre=(L // 2, 640))
         ecrire(e, "(ou tape ton nom au clavier, puis Entrée)", 24, BLANC, centre=(L // 2, 680))
 
     def dessiner_honneur(self, e):
@@ -604,7 +629,8 @@ class Jeu:
                 ecrire(e, droite, 26, couleur_d, gauche=(x + 180 - police(26).size(droite)[0] / ZOOM, y - 9))
             if haut + visibles < len(lignes):
                 ecrire(e, "…", 30, BLANC, centre=(x, 620))
-        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : jouer", 32, OR, centre=(L // 2, 676))
+        ecrire(e, f"{CROIX.capitalize()} : choisir   {BOUTONS['saut'].capitalize()} : jouer", 32, OR,
+               centre=(L // 2, 676))
 
     def dessiner_confirmer(self, e):
         eq = self.a_confirmer
@@ -620,7 +646,8 @@ class Jeu:
                 dessin.rect(e, OR, (x - 100, 470, 200, 64), 3, border_radius=14)
             ecrire(e, texte, 40, OR if choisi else BLANC, centre=(x, 502))
         ecrire(e, "(le meilleur temps est gardé)", 26, (190, 180, 210), centre=(L // 2, 580))
-        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : valider", 30, OR, centre=(L // 2, 660))
+        ecrire(e, f"{CROIX.capitalize()} : choisir   {BOUTONS['saut'].capitalize()} : valider", 30, OR,
+               centre=(L // 2, 660))
 
     def dessiner_voyage(self, e):
         v = self.voyage

@@ -6,8 +6,14 @@ fait aussi chaque image en PNG (si le navigateur ne lit pas les SVG) et fabrique
 `site/bled_en_fete/build/web` (index.html + archives) ; `./publier_web.sh` le publie sur `gh-pages`
 (GitHub Pages). Dans le navigateur (`outils.WEB`) : `main.py` lance la boucle (qui rend la
 main au navigateur à chaque image), simple définition, affichage par `display.set_mode`,
-tableau d'honneur gardé dans le navigateur (localStorage), pas de « quitter » ni de touche C.
-Sur ordinateur, rien ne change.
+tableau d'honneur gardé dans le navigateur (localStorage), pas de « quitter » ni de réglage
+des manettes. Le public visé joue au clavier : les textes nomment les touches
+(`niveaux.BOUTONS`, `CROIX`, `le()`) ; seul : flèches, espace, X bonbon, C couteau, P pause ;
+à deux : joueur 1 à gauche (Q/A D, espace, X, C), joueur 2 à droite (flèches, ↑, K, L).
+Le jeu avance selon le temps réel (`Jeu.avancer`) : s'il rame, il saute des images au lieu
+de ralentir. Pour aller vite : textes gardés (`outils.ecrire`), décor du Bled composé en
+une image (`Dehors.composer`), fond des menus figé (`Jeu.fond_menu`).
+Sur ordinateur, à la manette, rien ne change.
 
 **Variante « Bled »** (branche `bled`) : au lieu d'un château anonyme, le Bled, la
 coopérative d'habitants des Plaines-du-Loup à Lausanne où vit l'utilisateur (projet de

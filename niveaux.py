@@ -1,10 +1,24 @@
 """Les salles du Bled et ce qui s'y cache. C'est ici qu'on change ou qu'on ajoute
 une salle (et alors une fenêtre dans dehors.FENETRES)."""
 
-# Les boutons de la manette, désignés par leur place (pour ceux qui ne connaissent pas
-# les manettes) : la croix pour se déplacer, et les quatre boutons en losange.
-BOUTONS = {"saut": "bouton du bas", "action": "bouton de droite",
-           "coucou": "bouton du haut", "pause": "bouton de gauche"}
+import sys
+
+# Sur ordinateur, on joue à la manette : les boutons sont désignés par leur place (pour ceux
+# qui ne connaissent pas les manettes), la croix pour se déplacer. Dans un navigateur
+# (version web), on joue au clavier : on nomme les touches (voir manettes.CLAVIER_DUO).
+WEB = sys.platform == "emscripten"
+if WEB:
+    BOUTONS = {"saut": "barre d'espace", "action": "touche X", "coucou": "touche C", "pause": "touche P"}
+    CROIX = "les flèches"
+else:
+    BOUTONS = {"saut": "bouton du bas", "action": "bouton de droite",
+               "coucou": "bouton du haut", "pause": "bouton de gauche"}
+    CROIX = "la croix"
+
+
+def le(nom):
+    """« le bouton du bas », « la barre d'espace », « la touche X »."""
+    return ("la " if nom.split()[0] in ("barre", "touche") else "le ") + nom
 
 # Les façons de jouer : (nom dans le code, nom affiché, explication).
 MODES = [("solo", "Seul", "Un vampire, un joueur."),
@@ -35,11 +49,11 @@ NIVEAUX = [
          (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),
          (15, 34, "#"), (16, 34, "#"), (16, 41, "s"), (16, 45, "o"),
      ],
-     "aides": [(1, "Va à côté de la courge, puis bouton du haut : le couteau !"),
+     "aides": [(1, f"Va à côté de la courge, puis {BOUTONS['coucou']} : le couteau !"),
                (11, "Touche le néon pour l'allumer"),
-               (17, "Saute sur la chauve-souris (bouton du bas) !"),
-               (22, "Ramasse le bonbon, puis bouton de droite pour le lancer"),
-               (25, "Le fantôme n'a peur que des bonbons : bouton de droite !"),
+               (17, f"Saute sur la chauve-souris ({BOUTONS['saut']}) !"),
+               (22, f"Ramasse le bonbon, puis {BOUTONS['action']} pour le lancer"),
+               (25, f"Le fantôme n'a peur que des bonbons : {BOUTONS['action']} !"),
                (31, "Grimpe et touche la toile d'araignée"),
                (38, "Le squelette : saute-lui dessus deux fois ! Les bonbons ne marchent pas")]},
     {"nom": "Le foyer", "decor": "foyer",
