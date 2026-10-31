@@ -166,7 +166,7 @@ def image(nom, gauche=False):
             svg = io.BytesIO(fabrique(int(k or 0) / n).encode())
             try:
                 _images[cle] = pygame.image.load_sized_svg(svg, (w * ZOOM, h * ZOOM))
-            except (pygame.error, AttributeError):
+            except (pygame.error, AttributeError, RuntimeError):
                 # sans lecteur de SVG (certains navigateurs) : les images faites d'avance
                 # par construire_web.sh, en simple définition
                 im = pygame.image.load(str(DOSSIER_PNG / f"{base}@{int(k or 0)}.png"))

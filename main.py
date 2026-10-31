@@ -2,6 +2,8 @@
 sur ordinateur ; la boucle rend juste la main au navigateur à chaque image."""
 import asyncio
 
+import pygame  # noqa: F401  (pygbag prépare pygame d'après les import de main.py)
+
 import jeu
 
 
