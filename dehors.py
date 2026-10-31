@@ -61,7 +61,7 @@ d = _Agrandi
 # terre (en coupe), le foyer et la Tanière au rez, la terrasse du 5e sur le toit de l'aile
 # basse. En mesures de base (_BASE), puis à l'écran.
 FENETRES_BASE = [pygame.Rect(560, 504, 140, 72), pygame.Rect(140, 402, 160, 84),
-                 pygame.Rect(336, 402, 160, 84), pygame.Rect(240, 200, 300, 52)]
+                 pygame.Rect(336, 402, 160, 84), pygame.Rect(170, 200, 300, 52)]
 FENETRES = [rect_agrandi(r) for r in FENETRES_BASE]
 CAVE = pygame.Rect(430, 496, 290, 92)  # la Bricotine dans la terre, sous la cour (base)
 ARRIVEE = agrandi(84, 492)           # où les personnages se posent dans la cour, à l'accueil
