@@ -20,7 +20,7 @@ from pygame._sdl2 import video
 
 import musique
 import palmares
-from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, bezier, doux, vignette, zoomer
+from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, agrandi, bezier, doux, vignette, zoomer
 from niveaux import BOUTONS, MODES, NIVEAUX
 from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire,
                     melange, police, poser, preparer_images)
@@ -500,13 +500,14 @@ class Jeu:
         if self.ouvertes > 1:
             salle = f"<   {salle}   >"
             consigne += "   (la croix : choisir la salle)"
-        ecrire(e, salle, 38, BLANC, centre=(L // 2, 612))
-        ecrire(e, consigne, 32, OR, centre=(L // 2, 656))
+        ecrire(e, salle, 38, BLANC, centre=(L // 2, 624))
+        ecrire(e, consigne, 32, OR, centre=(L // 2, 664))
 
     def dessiner_danse(self, e):
         """La fin : les personnages dansent sur la terrasse du 5e (ils sautillent, se
         dandinent et se retournent en rythme)."""
-        r, sol = FENETRES[3], self.dehors.REZ - self.dehors.BASSE[2] * self.dehors.ETAGE - 7
+        r, dh = FENETRES[3], self.dehors
+        sol = agrandi(0, dh.REZ - dh.BASSE[2] * dh.ETAGE - 7)[1]  # le sol de la terrasse
         for k, (nom, _) in enumerate(PERSONNAGES[self.mode]):
             t = self.t * 2.2 + k * 0.5
             saut = 14 * abs(math.sin(t * math.pi))

@@ -14,12 +14,57 @@ from outils import (BLANC, FESTIF, H, L, OR, ZOOM, _z, anime, degrade, dessin,
 # Le Bled vu de dehors : l'accueil, et le voyage d'une salle à l'autre
 # --------------------------------------------------------------------------
 
+# Le Bled est dessiné avec des mesures « de base », puis agrandi de GRAND autour de CENTRE
+# (le pied du bâtiment) : on change sa taille à l'écran sans toucher à ses proportions.
+GRAND, CENTRE = 1.1, (540, 492)
+
+
+def agrandi(x, y):
+    return CENTRE[0] + (x - CENTRE[0]) * GRAND, CENTRE[1] + (y - CENTRE[1]) * GRAND
+
+
+def rect_agrandi(r):
+    x, y = agrandi(r[0], r[1])
+    return pygame.Rect(round(x), round(y), round(r[2] * GRAND), round(r[3] * GRAND))
+
+
+class _Agrandi:
+    """Comme outils.dessin, mais en mesures de base (agrandies de GRAND autour de CENTRE)."""
+
+    @staticmethod
+    def rect(s, couleur, r, width=0, border_radius=0):
+        x, y = agrandi(r[0], r[1])
+        dessin.rect(s, couleur, (x, y, r[2] * GRAND, r[3] * GRAND), width and max(1, round(width * GRAND)),
+                    round(border_radius * GRAND))
+
+    @staticmethod
+    def circle(s, couleur, centre, rayon, width=0):
+        dessin.circle(s, couleur, agrandi(*centre), rayon * GRAND, width and max(1, round(width * GRAND)))
+
+    @staticmethod
+    def ellipse(s, couleur, r, width=0):
+        x, y = agrandi(r[0], r[1])
+        dessin.ellipse(s, couleur, (x, y, r[2] * GRAND, r[3] * GRAND), width)
+
+    @staticmethod
+    def line(s, couleur, a, b, width=1):
+        dessin.line(s, couleur, agrandi(*a), agrandi(*b), max(1, round(width * GRAND)))
+
+    @staticmethod
+    def polygon(s, couleur, points):
+        dessin.polygon(s, couleur, [agrandi(*pt) for pt in points])
+
+
+d = _Agrandi
+
 # La fenêtre de chaque salle dans le Bled (une par salle de NIVEAUX) : la Bricotine sous
-# terre (en coupe), le foyer et la Tanière au rez, la terrasse du 5e sur le toit de l'aile basse.
-FENETRES = [pygame.Rect(560, 504, 140, 72), pygame.Rect(140, 402, 160, 84),
-            pygame.Rect(306, 402, 160, 84), pygame.Rect(210, 200, 300, 52)]
-CAVE = pygame.Rect(430, 496, 290, 92)  # la Bricotine dans la terre, sous la cour
-ARRIVEE = (78, 492)                  # où les personnages se posent dans la cour, à l'accueil
+# terre (en coupe), le foyer et la Tanière au rez, la terrasse du 5e sur le toit de l'aile
+# basse. En mesures de base (_BASE), puis à l'écran.
+FENETRES_BASE = [pygame.Rect(560, 504, 140, 72), pygame.Rect(140, 402, 160, 84),
+                 pygame.Rect(336, 402, 160, 84), pygame.Rect(240, 200, 300, 52)]
+FENETRES = [rect_agrandi(r) for r in FENETRES_BASE]
+CAVE = pygame.Rect(430, 496, 290, 92)  # la Bricotine dans la terre, sous la cour (base)
+ARRIVEE = agrandi(84, 492)           # où les personnages se posent dans la cour, à l'accueil
 SORTIE, VOL, ENTREE = 1.2, 1.8, 1.2   # durées du voyage : on recule, il vole, on plonge
 
 
@@ -127,77 +172,88 @@ class Dehors:
         bois = melange(MELEZE, (20, 14, 30), 0.6)                 # le mélèze, la nuit
         dalle, garde_corps = (150, 150, 160), (176, 176, 186)     # béton clair, garde-corps blancs
         for (x0, x1, _), haut in ((self.BASSE, haut_basse), (self.HAUTE, haut_haute)):
-            dessin.rect(s, bois, (x0, haut, x1 - x0, self.REZ - haut))
+            d.rect(s, bois, (x0, haut, x1 - x0, self.REZ - haut))
             for x in range(x0, x1, 6):  # les lames de bois verticales
-                dessin.line(s, melange(bois, (0, 0, 0), 0.22), (x, haut), (x, self.REZ), 1)
+                d.line(s, melange(bois, (0, 0, 0), 0.22), (x, haut), (x, self.REZ), 1)
         # l'aile haute fait un angle avec l'aile basse : son côté, dans l'ombre
-        dessin.rect(s, melange(bois, (0, 0, 0), 0.35), (self.HAUTE[0], haut_haute, 18, haut_basse - haut_haute))
+        d.rect(s, melange(bois, (0, 0, 0), 0.35), (self.HAUTE[0], haut_haute, 18, haut_basse - haut_haute))
         for x0, x1, bas in self.balcons:  # les balcons filants, qui débordent aux angles
-            dessin.rect(s, dalle, (x0 - 16, bas - 5, x1 - x0 + 32, 5))
-            dessin.line(s, garde_corps, (x0 - 16, bas - 17), (x1 + 16, bas - 17), 1)
+            d.rect(s, dalle, (x0 - 16, bas - 5, x1 - x0 + 32, 5))
+            d.line(s, garde_corps, (x0 - 16, bas - 17), (x1 + 16, bas - 17), 1)
             for x in range(x0 - 16, x1 + 17, 4):
-                dessin.line(s, melange(garde_corps, (0, 0, 0), 0.25), (x, bas - 17), (x, bas - 5), 1)
+                d.line(s, melange(garde_corps, (0, 0, 0), 0.25), (x, bas - 17), (x, bas - 5), 1)
         for x0, x1, haut in ((self.BASSE[0], self.BASSE[1], haut_basse), (self.HAUTE[0], self.HAUTE[1], haut_haute)):
-            dessin.rect(s, dalle, (x0 - 18, haut - 7, x1 - x0 + 36, 7))  # le toit, épais
+            d.rect(s, dalle, (x0 - 18, haut - 7, x1 - x0 + 36, 7))  # le toit, épais
         # la terrasse du 5e, sur le toit de l'aile basse : la pergola, large et basse, à
         # l'écart de l'aile haute (la fête qui s'y passe se voit dessous)
         poutre = melange((190, 144, 88), (20, 14, 30), 0.45)
-        r = FENETRES[3]
+        r = FENETRES_BASE[3]
         for x in (r.x - 22, r.centerx - 4, r.right + 14):
-            dessin.rect(s, poutre, (x, r.y - 12, 8, haut_basse - 7 - (r.y - 12)))
-        dessin.rect(s, poutre, (r.x - 30, r.y - 16, r.w + 60, 8))
+            d.rect(s, poutre, (x, r.y - 12, 8, haut_basse - 7 - (r.y - 12)))
+        d.rect(s, poutre, (r.x - 30, r.y - 16, r.w + 60, 8))
         for x in range(r.x - 30, r.right + 30, 14):  # les lattes de la pergola
-            dessin.rect(s, melange(poutre, (0, 0, 0), 0.2), (x, r.y - 22, 5, 6))
+            d.rect(s, melange(poutre, (0, 0, 0), 0.2), (x, r.y - 22, 5, 6))
         # puis sa balustrade, tout le long du bord, devant la pergola
         y0, y1 = haut_basse - 22, haut_basse - 7
-        dessin.line(s, garde_corps, (self.BASSE[0] - 18, y0), (self.BASSE[1], y0), 2)
+        d.line(s, garde_corps, (self.BASSE[0] - 18, y0), (self.BASSE[1], y0), 2)
         for x in range(self.BASSE[0] - 18, self.BASSE[1] + 1, 4):
-            dessin.line(s, melange(garde_corps, (0, 0, 0), 0.25), (x, y0), (x, y1), 1)
+            d.line(s, melange(garde_corps, (0, 0, 0), 0.25), (x, y0), (x, y1), 1)
         # le rez, en béton clair, en retrait sous le premier balcon, posé sur le sol
         rez = (96, 96, 106)
         x0, x1 = self.BASSE[0] + 10, self.HAUTE[1] - 10
-        dessin.rect(s, rez, (x0, self.REZ, x1 - x0, self.SOL - self.REZ))
-        dessin.rect(s, (60, 60, 70), (x0, self.REZ, x1 - x0, 6))
-        for x in (580, 680, 780, 870):  # des vitres du rez (l'épicerie, les bureaux…)
-            dessin.rect(s, (24, 26, 40), (x, 410, 56, 74))
-            dessin.line(s, (60, 62, 74), (x + 28, 410), (x + 28, 484), 2)
-        dessin.rect(s, (20, 20, 30), (500, 420, 26, 72))  # la porte d'entrée
+        d.rect(s, rez, (x0, self.REZ, x1 - x0, self.SOL - self.REZ))
+        d.rect(s, (60, 60, 70), (x0, self.REZ, x1 - x0, 6))
+        for x in (596, 686, 776, 866):  # des vitres du rez (l'épicerie, les bureaux…)
+            d.rect(s, (24, 26, 40), (x, 410, 56, 74))
+            d.line(s, (60, 62, 74), (x + 28, 410), (x + 28, 484), 2)
+        # la porte d'entrée : un auvent, une lampe, deux battants vitrés, un paillasson
+        d.rect(s, (130, 130, 140), (512, 400, 64, 6))
+        d.rect(s, (60, 60, 70), (512, 406, 64, 3))
+        d.circle(s, (255, 220, 150), (544, 414), 3)
+        d.rect(s, (120, 120, 130), (518, 418, 52, 74))
+        for x in (522, 545):
+            d.rect(s, (28, 40, 64), (x, 422, 21, 70))
+            d.line(s, (70, 90, 120), (x + 4, 432), (x + 12, 422), 2)   # un reflet
+            d.line(s, (70, 90, 120), (x + 4, 446), (x + 18, 428), 1)
+        d.line(s, (190, 190, 200), (541, 446), (541, 466), 2)          # les poignées
+        d.line(s, (190, 190, 200), (549, 446), (549, 466), 2)
+        d.rect(s, (70, 50, 40), (514, 489, 60, 4))
         # sous la cour, la terre, en coupe ; dedans, la Bricotine
         terre = (44, 32, 30)
-        dessin.rect(s, terre, (0, self.SOL, L, H - self.SOL))
+        d.rect(s, terre, (0, self.SOL, L, H - self.SOL))
         des = random.Random(5)
         for _ in range(220):  # des cailloux dans la terre
             x, y = des.uniform(0, L), des.uniform(self.SOL + 10, H)
-            dessin.ellipse(s, melange(terre, (90, 76, 66), des.uniform(0.2, 0.6)), (x, y, des.uniform(3, 7), 3))
+            d.ellipse(s, melange(terre, (90, 76, 66), des.uniform(0.2, 0.6)), (x, y, des.uniform(3, 7), 3))
         for y in (560, 630, 690):  # les couches de terre
-            dessin.line(s, melange(terre, (0, 0, 0), 0.25), (0, y), (L, y + des.uniform(-6, 6)), 1)
-        dessin.rect(s, melange(terre, (0, 0, 0), 0.3), (x0, self.SOL, x1 - x0, 10))  # les fondations
+            d.line(s, melange(terre, (0, 0, 0), 0.25), (0, y), (L, y + des.uniform(-6, 6)), 1)
+        d.rect(s, melange(terre, (0, 0, 0), 0.3), (x0, self.SOL, x1 - x0, 10))  # les fondations
         c = CAVE
-        dessin.rect(s, (110, 110, 120), c, border_radius=4)                # les murs de béton de la cave
-        dessin.rect(s, (30, 28, 36), c.inflate(-12, -12), border_radius=2)
+        d.rect(s, (110, 110, 120), c, border_radius=4)                # les murs de béton de la cave
+        d.rect(s, (30, 28, 36), c.inflate(-12, -12), border_radius=2)
         for x in (c.x + 22, c.x + 70):  # des vélos de la vélostation, à côté de l'atelier
-            dessin.circle(s, (76, 76, 86), (x, c.bottom - 20), 9, 2)
-            dessin.circle(s, (76, 76, 86), (x + 24, c.bottom - 20), 9, 2)
-            dessin.line(s, (110, 70, 70), (x, c.bottom - 20), (x + 12, c.bottom - 34), 2)
-            dessin.line(s, (110, 70, 70), (x + 12, c.bottom - 34), (x + 24, c.bottom - 20), 2)
+            d.circle(s, (76, 76, 86), (x, c.bottom - 20), 9, 2)
+            d.circle(s, (76, 76, 86), (x + 24, c.bottom - 20), 9, 2)
+            d.line(s, (110, 70, 70), (x, c.bottom - 20), (x + 12, c.bottom - 34), 2)
+            d.line(s, (110, 70, 70), (x + 12, c.bottom - 34), (x + 24, c.bottom - 20), 2)
         # le sol de la cour : une bande de gravier et d'herbe
-        dessin.rect(s, (62, 60, 66), (0, self.SOL, L, 6))
+        d.rect(s, (62, 60, 66), (0, self.SOL, L, 6))
         for x in range(0, L, 7):
             if not x0 - 6 < x < x1 + 6:
-                dessin.line(s, (40, 60, 40), (x, self.SOL), (x + 2, self.SOL - 5), 1)
-        for x, h in ((40, 230), (1236, 250)):  # deux grands pins
-            dessin.rect(s, (30, 22, 20), (x - 4, self.SOL - h * 0.2, 8, h * 0.2))
+                d.line(s, (40, 60, 40), (x, self.SOL), (x + 2, self.SOL - 5), 1)
+        for x, h in ((66, 210), (1180, 230)):  # deux grands pins
+            d.rect(s, (30, 22, 20), (x - 4, self.SOL - h * 0.2, 8, h * 0.2))
             for k in range(3):
                 y = self.SOL - h * 0.2 - k * h * 0.25
                 w = h * (0.32 - k * 0.07)
-                dessin.polygon(s, (16, 30, 26), [(x - w, y), (x, y - h * 0.4), (x + w, y)])
-        for x, h in ((1140, 110),):  # un jeune arbre
-            dessin.line(s, (40, 30, 26), (x, self.SOL), (x, self.SOL - h), 4)
+                d.polygon(s, (16, 30, 26), [(x - w, y), (x, y - h * 0.4), (x + w, y)])
+        for x, h in ((1100, 100),):  # un jeune arbre
+            d.line(s, (40, 30, 26), (x, self.SOL), (x, self.SOL - h), 4)
             for dx, dy, rr in ((0, -h, 28), (-18, -h + 16, 20), (18, -h + 14, 22)):
-                dessin.circle(s, (24, 40, 30), (x + dx, self.SOL + dy), rr)
-        for x, y in ((1100, 480), (1176, 484)):  # des rondins
-            dessin.rect(s, (82, 64, 46), (x, y, 14, 12), border_radius=3)
-            dessin.ellipse(s, (130, 104, 72), (x, y - 3, 14, 6))
+                d.circle(s, (24, 40, 30), (x + dx, self.SOL + dy), rr)
+        for x, y in ((1050, 480), (1124, 484)):  # des rondins
+            d.rect(s, (82, 64, 46), (x, y, 14, 12), border_radius=3)
+            d.ellipse(s, (130, 104, 72), (x, y - 3, 14, 6))
 
     # ---- ce qui bouge ----
 
@@ -215,24 +271,24 @@ class Dehors:
         for x, y, w, h, hasard, ferme in self.fenetres:  # elles s'allument avec la fête
             allume = hasard < 0.12 + 0.75 * fete
             if ferme:  # le rideau tiré, éclairé par derrière si on est là
-                dessin.rect(e, melange(rideau, (255, 214, 140), 0.45) if allume else melange(rideau, (0, 0, 0), 0.3),
+                d.rect(e, melange(rideau, (255, 214, 140), 0.45) if allume else melange(rideau, (0, 0, 0), 0.3),
                             (x, y, w, h))
                 for k in (5, 11, 17):
-                    dessin.line(e, melange(rideau, (0, 0, 0), 0.3), (x + k, y), (x + k, y + h), 1)
+                    d.line(e, melange(rideau, (0, 0, 0), 0.3), (x + k, y), (x + k, y + h), 1)
             else:
-                dessin.rect(e, (255, 204, 110) if allume else (22, 24, 38), (x, y, w, h))
+                d.rect(e, (255, 204, 110) if allume else (22, 24, 38), (x, y, w, h))
         bleu = melange(melange(RIDEAU, (20, 14, 30), 0.55), RIDEAU, fete)
         for x, y, decal in self.rideaux:  # les rideaux bleus flottent au vent
             onde = 3 * math.sin(t * 1.7 + decal)
-            dessin.polygon(e, bleu, [(x, y), (x + 6, y), (x + 6 + onde, y + self.ETAGE - 7),
+            d.polygon(e, bleu, [(x, y), (x + 6, y), (x + 6 + onde, y + self.ETAGE - 7),
                                      (x + onde, y + self.ETAGE - 7)])
         if fete > 0:  # des guirlandes et des citrouilles sur les balcons
             n = round(fete * len(self.balcons))
             for k, (x0, x1, bas) in enumerate(self.balcons[::-1][:n]):
                 for i, x in enumerate(range(x0, x1, 24)):
                     c = FESTIF[(i + k) % 5] if int(t * 3 + i) % 4 else BLANC
-                    dessin.circle(e, c, (x + 12, bas - self.ETAGE + 5 + 3 * math.sin(i)), 2)
-                citrouille(e, x0 + 30 + (k * 97) % (x1 - x0 - 60), bas - 5, 6, True)
+                    d.circle(e, c, (x + 12, bas - self.ETAGE + 5 + 3 * math.sin(i)), 2)
+                citrouille(e, *agrandi(x0 + 30 + (k * 97) % (x1 - x0 - 60), bas - 5), 6 * GRAND, True)
         for i, r in enumerate(FENETRES):
             if i in vignettes:
                 e.blit(vignettes[i], (_z(r.x), _z(r.y)))
@@ -243,11 +299,11 @@ class Dehors:
                 g = 10 + 4 * math.sin(t * 6)
                 dessin.rect(e, OR, r.inflate(g, g), 3, border_radius=8)
         if fete > 0:  # des lampions sous la pergola
-            r = FENETRES[3]
+            r = FENETRES_BASE[3]
             for k, x in enumerate(range(r.x - 20, r.right + 24, 30)):  # accrochés à la poutre
                 y = r.y - 6 + 3 * math.sin(t * 2 + k)
-                dessin.line(e, (60, 50, 40), (x, r.y - 10), (x, y), 1)
-                dessin.circle(e, FESTIF[k % 5], (x, y), 5)
+                d.line(e, (60, 50, 40), (x, r.y - 10), (x, y), 1)
+                d.circle(e, FESTIF[k % 5], (x, y), 5)
         for k in range(round(4 * (1 - fete))):  # les chauves-souris s'en vont avec la fête
             x = (k * 370 + t * (60 + k * 15)) % (L + 200) - 100
             y = 150 + 40 * math.sin(t * 1.3 + k) + k * 40

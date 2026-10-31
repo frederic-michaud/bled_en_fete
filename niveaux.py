@@ -29,7 +29,7 @@ NIVEAUX = [
      "objets": {"l": ("neon_eteint", "neon_allume")}, "cols": 48, "poche": 3, "corbeau": None,
      "plan": [
          (16, 3, "V"), (16, 8, "c"), (13, 14, "l"), (14, 20, "b"), (16, 23, "o"),
-         (15, 11, "====="),                                   # l'établi (on monte dessus)
+         (15, 11, "====="), (15, 24, "====="),               # deux établis (on monte dessus)
          (12, 16, "----"), (9, 19, "----"), (5, 21, "l"),     # des étagères jusqu'à un néon
          (8, 36, "-----"), (4, 38, "l"),                      # et un autre, tout en haut
          (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),

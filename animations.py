@@ -507,18 +507,18 @@ def courge(phase):
 # ---- les lampes propres à chaque salle du Bled (à la place du chandelier) ----
 
 def neon(phase, allume):
-    """Le néon de la Bricotine : éteint (il grésille parfois), ou allumé."""
-    angle = 2 * math.sin(phase * TAU)
+    """Le néon de la Bricotine, large, pendu à deux fils : éteint (il grésille parfois),
+    ou allumé."""
     gresille = not allume and 0.80 < phase < 0.84
     tube = "#ffffff" if allume else ("#c8d8e8" if gresille else "#5a5e6a")
-    lueur = ('<ellipse cx="32" cy="34" rx="34" ry="12" fill="#f0f8ff" opacity="0.35"/>' if allume else
-             '<ellipse cx="32" cy="34" rx="26" ry="6" fill="#c8d8e8" opacity="0.25"/>' if gresille else "")
-    toile = '' if allume else '<path d="M8 30 Q14 38 22 30" stroke="#aaaaaa" stroke-width="0.8" fill="none" opacity="0.6"/>'
-    return _svg((0, 0, 64, 64),
-                f'<g transform="rotate({angle:.1f} 32 0)">'
-                '<path d="M14 0 L14 26 M50 0 L50 26" stroke="#3a3a44" stroke-width="1.5"/>'
-                f'{lueur}<rect x="4" y="24" width="56" height="9" rx="2" fill="#6a6e78"/>'
-                f'<rect x="7" y="31" width="50" height="5" rx="2.5" fill="{tube}"/>{toile}</g>')
+    lueur = ('<ellipse cx="48" cy="26" rx="52" ry="14" fill="#f0f8ff" opacity="0.35"/>' if allume else
+             '<ellipse cx="48" cy="26" rx="40" ry="8" fill="#c8d8e8" opacity="0.25"/>' if gresille else "")
+    toile = '' if allume else '<path d="M10 22 Q18 32 28 22" stroke="#aaaaaa" stroke-width="0.8" fill="none" opacity="0.6"/>'
+    return _svg((0, 0, 96, 40),
+                f'<rect x="6" y="2" width="4" height="6" fill="#3a3a44"/><rect x="86" y="2" width="4" height="6" fill="#3a3a44"/>'
+                f'{lueur}<rect x="2" y="8" width="92" height="12" rx="3" fill="#6a6e78"/>'
+                '<rect x="2" y="8" width="92" height="3" rx="1.5" fill="#868a94"/>'
+                f'<rect x="5" y="18" width="86" height="7" rx="3.5" fill="{tube}"/>{toile}')
 
 
 def suspension(phase, allume):

@@ -285,6 +285,18 @@ def cour_de_nuit(s, x, y, w, h, fete):
     s.set_clip(None)
 
 
+def canape(s, x, tissu, pieds, fete, largeur=150):
+    """Un canapé posé au sol (y = 680), avec ses accoudoirs et deux coussins."""
+    dessin.rect(s, tissu, (x, 560, largeur, 70), border_radius=14)                       # le dossier
+    dessin.rect(s, melange(tissu, (255, 255, 255), 0.1), (x, 610, largeur, 50), border_radius=10)  # l'assise
+    for xx in (x - 8, x + largeur - 14):
+        dessin.rect(s, melange(tissu, (0, 0, 0), 0.2), (xx, 590, 22, 70), border_radius=10)  # les accoudoirs
+    for k, xx in enumerate((x + 30, x + largeur - 60)):
+        dessin.rect(s, couleur(fete, (60, 50, 60), FESTIF[(x // 50 + k) % 5]), (xx, 580, 30, 30), border_radius=8)
+    for xx in (x + 6, x + largeur - 14):
+        dessin.rect(s, pieds, (xx, 660, 8, 20))
+
+
 def mur_foyer(fete):
     s = pygame.Surface((_z(MOTIF), _z(H)))
     bois = couleur(fete, (60, 44, 32), MELEZE)
@@ -334,16 +346,9 @@ def mur_foyer(fete):
             dessin.rect(s, c, (x, y + 78 - h, w, h), border_radius=1)
             x += w + 2
         dessin.rect(s, etagere, (1610, y + 78, 170, 8))
-    # le canapé, avec ses coussins
-    tissu = couleur(fete, (40, 50, 70), (70, 110, 170))
-    dessin.rect(s, tissu, (1800, 560, 120, 70), border_radius=14)            # le dossier
-    dessin.rect(s, melange(tissu, (255, 255, 255), 0.1), (1800, 610, 120, 50), border_radius=10)  # l'assise
-    for x in (1792, 1906):
-        dessin.rect(s, melange(tissu, (0, 0, 0), 0.2), (x, 590, 22, 70), border_radius=10)  # les accoudoirs
-    for x in (1830, 1874):
-        dessin.rect(s, couleur(fete, (60, 50, 60), FESTIF[(x // 44) % 5]), (x, 580, 30, 30), border_radius=8)
-    dessin.rect(s, melange(bois, (0, 0, 0), 0.4), (1806, 660, 8, 20))
-    dessin.rect(s, melange(bois, (0, 0, 0), 0.4), (1906, 660, 8, 20))
+    # des canapés, devant les vitres et à côté de la bibliothèque
+    for x, tissu in ((300, (70, 110, 170)), (1250, (170, 80, 90)), (1800, (80, 140, 110))):
+        canape(s, x, couleur(fete, melange(tissu, (20, 20, 30), 0.65), tissu), melange(bois, (0, 0, 0), 0.4), fete)
     if fete:
         citrouille(s, 1700, 200, 14, True)
     if not fete:
@@ -391,7 +396,7 @@ def mur_taniere(fete):
     dessin.rect(s, melange(noir, (255, 255, 255), 0.12), (0, 96, 760, 6))  # le rail
     # les faisceaux des projecteurs (en fête)
     if fete:
-        for k, (x, y) in enumerate(((300, 0), (980, 0), (1500, 0))):
+        for k, (x, y) in enumerate(((300, 0), (980, 0))):
             c = melange(noir, FESTIF[k + 1], 0.22)
             dessin.polygon(s, c, [(x - 10, y), (x + 10, y), (x + 200, 680), (x - 160, 680)])
     # le grand écran
@@ -419,8 +424,8 @@ def mur_taniere(fete):
     dessin.rect(s, (24, 24, 28), (1660, 446, 46, 234))
     # le panneau « sortie »
     dessin.rect(s, couleur(fete, (20, 90, 50), (40, 200, 110)), (1605, 404, 60, 30), border_radius=3)
-    dessin.polygon(s, (240, 255, 240), [(1619, 419), (1635, 411), (1635, 427)])
-    dessin.rect(s, (240, 255, 240), (1635, 416, 18, 6))
+    dessin.rect(s, (240, 255, 240), (1632, 408, 6, 10))                      # la flèche, vers le bas
+    dessin.polygon(s, (240, 255, 240), [(1625, 417), (1645, 417), (1635, 429)])
     return s
 
 
@@ -495,6 +500,27 @@ def montagnes(s, sommets, bas, fete, decalage=0):
         dessin.polygon(s, neige, [(xb, yb)] + dents[:4] + [(xb, dents[3][1])])
 
 
+TOUR = (1420, 198, 470, 482, 118)    # la tour au fond de la terrasse : x, y, largeur, hauteur, étage
+
+
+def rideaux_tour():
+    """Les rideaux bleus de la tour (x, haut, hauteur) : ils bougent au vent (voir animer)."""
+    x, y, w, h, etage = TOUR
+    return [(xx, yy - etage + 6, etage - 16) for yy in range(y + etage, y + h + 1, etage)
+            for xx in range(x + 100, x + w - 10, 150)]
+
+
+def animer(nom, e, x0, t, f):
+    """Ce qui bouge dans le décor (dessiné par-dessus le mur du fond placé en x0)."""
+    if nom == "terrasse":
+        bleu = melange((48, 62, 78), RIDEAU, f)
+        for x, y, h in rideaux_tour():
+            onde = 7 * math.sin(t * 1.4 + x * 0.013 + y * 0.021)
+            dessin.polygon(e, bleu, [(x0 + x, y), (x0 + x + 22, y), (x0 + x + 22 + onde, y + h),
+                                     (x0 + x + onde * 0.7, y + h)])
+            dessin.line(e, melange(bleu, (0, 0, 0), 0.25), (x0 + x + 11, y), (x0 + x + 11 + onde * 0.8, y + h), 1)
+
+
 def facade_du_bled(s, x, y, w, h, fete, etage=118):
     """Un morceau de la façade côté cour, vu de près : mélèze, grandes portes vitrées,
     balcons filants, rideaux bleus."""
@@ -509,13 +535,54 @@ def facade_du_bled(s, x, y, w, h, fete, etage=118):
             dessin.rect(s, (255, 206, 120) if allume else (24, 26, 40), (xx, yy - etage + 14, 70, etage - 26))
             dessin.line(s, (40, 40, 50), (xx + 35, yy - etage + 14), (xx + 35, yy - 12), 2)
         dessin.rect(s, couleur(fete, (110, 112, 118), (226, 228, 230)), (x - 16, yy - 10, w + 32, 10))
-        for xx in range(x - 16, x + w + 16, 10):
-            dessin.line(s, couleur(fete, (86, 88, 94), (236, 238, 240)), (xx, yy - 46), (xx, yy - 10), 2)
-        dessin.line(s, couleur(fete, (86, 88, 94), (236, 238, 240)), (x - 16, yy - 46), (x + w + 16, yy - 46), 3)
-        for xx in range(x + 100, x + w - 10, 150):
-            dessin.rect(s, couleur(fete, (48, 62, 78), RIDEAU), (xx, yy - etage + 6, 22, etage - 16))
+        if yy < 600:  # en bas, c'est la balustrade de la terrasse qui est devant
+            for xx in range(x - 16, x + w + 16, 10):
+                dessin.line(s, couleur(fete, (86, 88, 94), (236, 238, 240)), (xx, yy - 46), (xx, yy - 10), 2)
+            dessin.line(s, couleur(fete, (86, 88, 94), (236, 238, 240)), (x - 16, yy - 46), (x + w + 16, yy - 46), 3)
         if fete:
             guirlande_lumineuse(s, (x - 10, yy - etage + 8), (x + w + 10, yy - etage + 8), True, creux=12, n=8)
+
+
+def plante(s, x, y, genre, fete):
+    """Une plante du potager posée en y : tomate tuteurée, salade, tournesol, haricots
+    grimpants. Fanée et brune quand c'est lugubre, verte et en fruits en fête."""
+    vert, fonce = couleur(fete, (92, 76, 46), (76, 160, 70)), couleur(fete, (66, 52, 34), (46, 116, 50))
+    if genre == 0:  # la tomate, sur son tuteur
+        dessin.line(s, couleur(fete, (90, 70, 46), (170, 130, 80)), (x, y), (x, y - 76), 3)
+        for k in range(4):
+            yy = y - 16 - k * 16
+            pend = 0 if fete else 6  # les feuilles fanées pendent
+            dessin.ellipse(s, vert if k % 2 else fonce, (x - 16, yy - 6 + pend, 14, 9))
+            dessin.ellipse(s, vert if k % 2 == 0 else fonce, (x + 2, yy - 4 + pend, 14, 9))
+        for dx, dy in ((-8, -30), (7, -48), (-6, -62)) if fete else ():
+            dessin.circle(s, (224, 50, 40), (x + dx, y + dy), 5)
+            dessin.circle(s, (255, 140, 120), (x + dx - 1.5, y + dy - 1.5), 1.5)
+    elif genre == 1:  # la salade, en rosette
+        for k, (dx, w) in enumerate(((-14, 18), (-4, 20), (6, 18), (-9, 16), (1, 16))):
+            dessin.ellipse(s, couleur(fete, (110, 92, 52), (130, 200, 90)) if k > 2 else vert,
+                           (x + dx - 6, y - 18 - (k > 2) * 6, w, 18))
+    elif genre == 2:  # le tournesol
+        if fete:
+            dessin.line(s, fonce, (x, y), (x, y - 92), 3)
+            dessin.ellipse(s, vert, (x - 18, y - 50, 16, 9))
+            dessin.ellipse(s, vert, (x + 2, y - 66, 16, 9))
+            for a in range(0, 360, 30):
+                u = math.radians(a)
+                dessin.circle(s, (255, 206, 40), (x + 12 * math.cos(u), y - 96 + 12 * math.sin(u)), 6)
+            dessin.circle(s, (110, 70, 30), (x, y - 96), 8)
+        else:  # tout penché, la tête basse
+            dessin.line(s, fonce, (x, y), (x + 4, y - 70), 3)
+            dessin.line(s, fonce, (x + 4, y - 70), (x + 18, y - 56), 3)
+            dessin.circle(s, (70, 54, 34), (x + 20, y - 52), 8)
+    else:  # les haricots, sur deux perches en tipi
+        perche = couleur(fete, (90, 70, 46), (170, 130, 80))
+        dessin.line(s, perche, (x - 12, y), (x + 2, y - 84), 2)
+        dessin.line(s, perche, (x + 12, y), (x - 2, y - 84), 2)
+        for k in range(6):
+            yy = y - 12 - k * 12
+            dessin.ellipse(s, vert if k % 2 else fonce, (x - 12 + (k % 2) * 8, yy - 4, 12, 8))
+            if fete and k % 2:
+                dessin.line(s, (110, 190, 80), (x - 4 + k, yy), (x - 4 + k, yy + 14), 2)
 
 
 def mur_terrasse(fete):
@@ -540,7 +607,9 @@ def mur_terrasse(fete):
     for _ in range(160 if fete else 70):
         dessin.circle(s, (255, 200, 110), (des.uniform(0, MOTIF), des.uniform(526, 590)), 1)
     # un morceau de l'aile haute du Bled, avec ses balcons filants
-    facade_du_bled(s, 1420, 80, 470, 600, fete)
+    x, y, w, h, etage = TOUR
+    facade_du_bled(s, x, y, w, h, fete, etage)
+    dessin.rect(s, couleur(fete, (110, 112, 118), (226, 228, 230)), (x - 20, y - 12, w + 40, 14))  # le toit
     # la balustrade blanche, au bord de la terrasse
     blanc = couleur(fete, (90, 92, 100), (236, 238, 240))
     dessin.rect(s, blanc, (0, 590, MOTIF, 5))
@@ -552,16 +621,8 @@ def mur_terrasse(fete):
         dessin.rect(s, caisse, (x, 600, 200, 80))
         for y in (620, 650):
             dessin.line(s, melange(caisse, (0, 0, 0), 0.25), (x, y), (x + 200, y), 2)
-        for k in range(6):  # des plantes : fanées, ou fleuries
-            px = x + 20 + k * 32
-            tige = couleur(fete, (70, 60, 40), (70, 150, 70))
-            dessin.line(s, tige, (px, 600), (px + (6 if not fete else 0), 540 + (k % 2) * 16), 3)
-            if fete:
-                dessin.circle(s, FESTIF[k % 5], (px, 540 + (k % 2) * 16), 9)
-                dessin.circle(s, OR, (px, 540 + (k % 2) * 16), 3)
-            else:
-                dessin.line(s, tige, (px + 6, 556), (px + 18, 566), 2)
-        citrouille(s, x + 100, 600, 20, fete)
+        for k in range(5):
+            plante(s, x + 22 + k * 39, 600, k % 4, fete)
     return s
 
 
@@ -595,13 +656,15 @@ def tuiles_terrasse():
 # une table, la pergola de la terrasse. Dessinés à l'écran, entre x0 et x1, dessus en y.
 # --------------------------------------------------------------------------
 
-def dessiner_meuble(nom, e, x0, x1, y, sol, fete):
+def dessiner_meuble(nom, e, x0, x1, y, sols, fete):
+    """sols : le sol sous le pied de gauche et sous celui de droite."""
+    sol = max(sols)
     if nom == "bricotine":  # l'établi : un plateau épais, des pieds, une étagère dessous, un étau
         bois = (150, 104, 62)
         dessin.rect(e, bois, (x0, y, x1 - x0, 16))
         dessin.line(e, (186, 138, 88), (x0, y + 2), (x1, y + 2), 2)
-        for x in (x0 + 6, x1 - 18):
-            dessin.rect(e, (110, 74, 44), (x, y + 16, 12, sol - y - 16))
+        for x, sol_pied in zip((x0 + 6, x1 - 18), sols):
+            dessin.rect(e, (110, 74, 44), (x, y + 16, 12, sol_pied - y - 16))
         dessin.rect(e, (110, 74, 44), (x0 + 6, sol - 30, x1 - x0 - 12, 8))
         for k, x in enumerate(range(int(x0) + 26, int(x1) - 40, 34)):  # des caisses à outils
             dessin.rect(e, ((200, 60, 50), (60, 120, 200))[k % 2], (x, sol - 52, 28, 22), border_radius=3)
@@ -609,8 +672,8 @@ def dessiner_meuble(nom, e, x0, x1, y, sol, fete):
         dessin.line(e, (150, 150, 160), (x1 - 40, y - 6), (x1 - 2, y - 6), 2)
     elif nom == "terrasse":  # la pergola : une poutre, des chevrons, des poteaux, des fanions
         bois = (190, 144, 88) if fete else (120, 92, 60)
-        for x in (x0 + 4, x1 - 16):
-            dessin.rect(e, melange(bois, (0, 0, 0), 0.15), (x, y + 14, 12, sol - y - 14))
+        for x, sol_pied in zip((x0 + 4, x1 - 16), sols):
+            dessin.rect(e, melange(bois, (0, 0, 0), 0.15), (x, y + 14, 12, sol_pied - y - 14))
         for x in range(int(x0), int(x1), 20):
             dessin.rect(e, melange(bois, (0, 0, 0), 0.25), (x + 6, y - 10, 8, 12))
         dessin.rect(e, bois, (x0 - 10, y, x1 - x0 + 20, 14))
@@ -620,8 +683,8 @@ def dessiner_meuble(nom, e, x0, x1, y, sol, fete):
         dessus = (60, 56, 70) if nom == "taniere" else (150, 104, 62)
         dessin.rect(e, dessus, (x0, y, x1 - x0, 12), border_radius=3)
         dessin.line(e, melange(dessus, (255, 255, 255), 0.25), (x0 + 3, y + 2), (x1 - 3, y + 2), 2)
-        for x in (x0 + 8, x1 - 16):
-            dessin.rect(e, melange(dessus, (0, 0, 0), 0.3), (x, y + 12, 8, sol - y - 12))
+        for x, sol_pied in zip((x0 + 8, x1 - 16), sols):
+            dessin.rect(e, melange(dessus, (0, 0, 0), 0.3), (x, y + 12, 8, sol_pied - y - 12))
 
 
 MURS = {"bricotine": mur_bricotine, "foyer": mur_foyer, "taniere": mur_taniere, "terrasse": mur_terrasse}

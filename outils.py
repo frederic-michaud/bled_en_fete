@@ -30,7 +30,7 @@ TAILLES = {
     "chauve_souris": (56, 42), "ballon": (42, 56),
     "toile": (60, 60), "guirlande": (72, 72),
     "chandelier_eteint": (64, 64), "chandelier_allume": (64, 68),
-    "neon_eteint": (64, 64), "neon_allume": (64, 64), "suspension_eteinte": (64, 64),
+    "neon_eteint": (96, 40), "neon_allume": (96, 40), "suspension_eteinte": (64, 64),
     "suspension_allumee": (64, 64), "projecteur_eteint": (64, 64), "projecteur_allume": (64, 64),
     "lampion_eteint": (64, 64), "lampion_allume": (64, 64),
     "corbeau_vol": (86, 67), "corbeau_picore": (86, 67), "corbeau_ricane": (86, 67),

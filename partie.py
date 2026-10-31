@@ -191,8 +191,9 @@ class Chose:
             return
         echelle = 1.0 + 0.35 * math.sin(self.pop / 0.5 * math.pi)
         angle, nom, gauche = 0.0, (self.fete if self.fetee else self.peur), self.dir < 0
-        if self.genre == "l":  # le fil de la lampe, depuis le plafond ou le meuble au-dessus
-            dessin.line(surf, (60, 60, 70), (x, self.accroche()), (x, y - self.h / 2 + 2), 2)
+        if self.genre == "l":  # le fil de la lampe (deux pour un néon), du plafond ou du meuble au-dessus
+            for dx in ((-40, 40) if self.peur.startswith("neon") else (0,)):
+                dessin.line(surf, (60, 60, 70), (x + dx, self.accroche()), (x + dx, y - self.h / 2 + 2), 2)
         if self.fetee and self.genre in "fb":
             angle = 5 * math.sin(self.t * 2)
         if self.tas > 0:
@@ -506,8 +507,9 @@ class Partie:
                     c0 = c
                     while c < COLS and self.grille[r][c] == "=":
                         c += 1
-                    sol = next(rr for rr in range(r + 1, RANGS) if self.grille[rr][c0] == "#")
-                    self.meubles.append((c0, c, r, sol))
+                    sols = tuple(next(rr for rr in range(r + 1, RANGS) if self.grille[rr][cc] == "#")
+                                 for cc in (c0, c - 1))  # sous chaque pied
+                    self.meubles.append((c0, c, r, sols))
                 c += 1
         self.maj_camera(direct=True)
 
@@ -744,6 +746,8 @@ class Partie:
             while x < L:
                 e.blit(mur, (_z(x), 0))
                 x += decors.MOTIF
+        for x in range(-(fond % decors.MOTIF), L, decors.MOTIF):  # ce qui bouge dans le décor
+            decors.animer(self.niveau["decor"], e, x, self.t, f)
         # les guirlandes au plafond apparaissent petit à petit
         for k in range(self.cols * T // 160):
             if (k * 37) % 100 >= f * 100:
@@ -770,10 +774,10 @@ class Partie:
                     e.blit(self.pierre, (_z(c * T - cx), _z(r * T)))
                 elif t == "-":
                     e.blit(self.planche, (_z(c * T - cx), _z(r * T)))
-        for c0, c1, r, sol in self.meubles:
+        for c0, c1, r, sols in self.meubles:
             if c1 * T - cx > -60 and c0 * T - cx < L + 60:
-                decors.dessiner_meuble(self.niveau["decor"], e, c0 * T - cx, c1 * T - cx, r * T, sol * T,
-                                       f > 0.5)
+                decors.dessiner_meuble(self.niveau["decor"], e, c0 * T - cx, c1 * T - cx, r * T,
+                                       [sol * T for sol in sols], f > 0.5)
         for ch in self.choses:
             ch.dessiner(e, cx)
         for x, y, absent in self.bonbons:
