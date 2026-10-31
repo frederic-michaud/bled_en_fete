@@ -9,7 +9,17 @@ la terrasse du 5e (dehors : pergola, potager, lac et Alpes). Les décors sont da
 `decors.py` (un mur, une frise et des tuiles par salle, lugubres et en fête). Chaque salle a
 aussi ses lampes à allumer (`NIVEAUX[i]["objets"]` : néon, suspension, projecteur, lampion,
 à la place du chandelier) et un plan qui rappelle le lieu (établi, comptoir du bar, gradins
-et estrade, bacs du potager). Les photos
+et estrade, bacs du potager).
+
+Déroulement de la variante (`jeu.py`) : au lancement, le **tableau d'honneur** (une colonne
+par façon de jouer : « + Nouveau » puis chaque équipe, avec son meilleur temps ou la salle
+où elle en est). On crée une équipe (noms) ou on en choisit une, sans mot de passe. Une
+équipe en cours reprend avec exactement ses salles atteintes (déjà en fête dans le Bled) ;
+une équipe qui a fini doit confirmer pour recommencer à la salle 1 (son meilleur temps
+reste). Puis le Bled, avec ses 1 ou 2 personnages dans la cour ; Échap ou bouton de gauche :
+retour au tableau. Après le feu d'artifice final : retour au tableau. `palmares.json`
+garde les équipes (`palmares.py` : ouvertes, chrono, fini, meilleur) ; il est enregistré
+à chaque salle finie, au retour au tableau et en quittant. Les photos
 du site ont servi de modèle seulement : aucune image n'est copiée dans le jeu.
 
 Un vampire redécore son château lugubre pour Halloween. Il traverse 4 salles et doit

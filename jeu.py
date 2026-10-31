@@ -2,9 +2,10 @@
 Seul, à deux, ou parent et enfant, à la manette (base technique reprise de « Les Deux Amis »).
 
 Lancer avec :  .venv/bin/python jeu.py
-Les écrans (Jeu.etat) : « titre » (l'accueil dans la cour du Bled), « mode » (seul, à deux,
-parent et enfant), « nom » (chacun écrit son nom), « voyage » (d'une salle à l'autre),
-« jeu » (dans une salle), « fin » (la grande fête) et « honneur » (le tableau d'honneur).
+Les écrans (Jeu.etat) : « honneur » (le tableau d'honneur, au lancement : on choisit son
+équipe ou on en crée une), « nom » (chacun écrit son nom), « confirmer » (recommencer une
+partie finie ?), « titre » (le Bled vu de la cour : on choisit la salle), « voyage »
+(d'une salle à l'autre), « jeu » (dans une salle) et « fin » (la grande fête).
 """
 import math
 import os
@@ -21,7 +22,7 @@ import musique
 import palmares
 from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, bezier, doux, vignette, zoomer
 from niveaux import BOUTONS, MODES, NIVEAUX
-from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire, envelopper,
+from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire,
                     melange, police, poser, preparer_images)
 from partie import PERSONNAGES, Partie
 from sons import creer_sons
@@ -52,19 +53,20 @@ class Jeu:
         self.sons = creer_sons()
         self.musique = musique.Musique()
         self.entrees = manettes.Entrees()
-        self.etat = "titre"       # titre, mode, nom, voyage, jeu, fin ou honneur
+        self.etat = "honneur"     # honneur, nom, confirmer, titre, voyage, jeu ou fin
         self.partie = None
+        self.equipes = palmares.lire()   # tous les joueurs du tableau d'honneur
+        self.equipe = None        # l'équipe qui joue (un élément de self.equipes)
+        self.choix = [0, 0]       # au tableau : la colonne (MODES) et la ligne (0 : « nouveau »)
+        self.confirme = 1         # recommencer une partie finie : 0 oui, 1 non
+        self.a_confirmer = None   # l'équipe finie qu'on propose de recommencer
         self.niveau = 0           # salle choisie à l'accueil
         self.ouvertes = 1         # on ne peut choisir que les salles déjà atteintes
         self.mode = "solo"        # seul, à deux (duo) ou parent et enfant (parent)
-        self.choix_mode = 0
-        self.noms = ["", ""]      # le nom de chaque joueur (gardé pour la partie suivante)
-        self.pret = False         # mode et noms choisis : à l'accueil, on part tout de suite
+        self.noms = ["", ""]      # le nom de chaque joueur
         self.qui = 0              # le joueur qui écrit son nom
         self.curseur = [0, 0]     # la lettre choisie dans GRILLE (ligne, colonne)
-        self.chrono = 0.0         # le temps passé dans les salles depuis la salle 1
-        self.chrono_ok = False    # partis de la salle 1 sans revenir à l'accueil
-        self.reussite = None      # la dernière réussite inscrite au tableau d'honneur
+        self.chrono = 0.0         # le temps passé dans les salles depuis le début de la partie
         self.pause = False
         self.t = 0.0
         self.titre_t = 0.0        # depuis quand on est à l'accueil (le vampire arrive)
@@ -89,8 +91,58 @@ class Jeu:
             self.sons[nom].play()
 
     def quitter(self):
+        self.sauver()
         pygame.quit()
         sys.exit()
+
+    # ---- les équipes du tableau d'honneur ----
+
+    def sauver(self):
+        """Garde où en est l'équipe qui joue (salles atteintes, temps)."""
+        if self.equipe:
+            self.equipe["ouvertes"], self.equipe["chrono"] = self.ouvertes, round(self.chrono, 1)
+        palmares.enregistrer(self.equipes)
+
+    def colonne(self):
+        """Les équipes de la colonne choisie au tableau d'honneur."""
+        return palmares.classement(self.equipes, MODES[self.choix[0]][0])
+
+    def choisir_equipe(self, equipe):
+        """Une équipe est choisie : finie, on demande avant de recommencer ; sinon on y va."""
+        if equipe["fini"]:
+            self.a_confirmer, self.etat, self.confirme = equipe, "confirmer", 1
+            self.son("clic")
+        else:
+            self.charger(equipe)
+
+    def charger(self, equipe):
+        """Le Bled de cette équipe : ses salles déjà finies sont en fête, on reprend là
+        où elle en était, avec les salles qu'elle avait atteintes."""
+        if self.equipe is not equipe:
+            self.sauver()  # celle qui jouait avant garde où elle en était
+        self.equipe, self.mode = equipe, equipe["mode"]
+        self.noms = equipe["noms"] + [""] * (2 - len(equipe["noms"]))
+        self.ouvertes, self.chrono = equipe["ouvertes"], equipe["chrono"]
+        self.niveau = self.ouvertes - 1
+        self.salles, self.vignettes = {}, {}
+        for i in range(self.ouvertes - 1):
+            p = Partie(i, self.son, self.mode)
+            for ch in p.choses:
+                ch.transformer()
+            p.fete_vue = 1.0
+            self.salles[i] = p
+            p.dessiner(self.ecran_salle, apercu=True)
+            self.vignettes[i] = vignette(self.ecran_salle, FENETRES[i], False)
+        self.etat, self.titre_t = "titre", 0.0
+        self.son("clic")
+
+    def recommencer_equipe(self):
+        """Une équipe qui avait fini repart de la première salle (elle garde son meilleur temps)."""
+        self.sauver()  # celle qui jouait avant garde où elle en était
+        e = self.a_confirmer
+        e["fini"], e["ouvertes"], e["chrono"] = False, 1, 0.0
+        palmares.enregistrer(self.equipes)
+        self.charger(e)
 
     def commencer(self, i_niveau=None):
         if i_niveau is not None:
@@ -173,8 +225,6 @@ class Jeu:
             partie, apres = Partie(vers, self.son, self.mode), pygame.Surface((L * ZOOM, H * ZOOM))
             partie.dessiner(apres, apercu=True)
         self.voyage = {"depuis": depuis, "vers": vers, "t": 0.0, "partie": partie, "apres": apres}
-        if depuis is None:  # on part de l'accueil : le chrono repart de zéro
-            self.chrono, self.chrono_ok = 0.0, vers == 0
         if depuis is not None:
             self.salles[depuis] = self.partie  # elle continue la fête
         self.etat = "voyage"
@@ -227,7 +277,7 @@ class Jeu:
                         self.fenetre.set_windowed()
                 elif ev.key == pygame.K_m:
                     self.musique.active = not self.musique.active
-                elif ev.key == pygame.K_c and self.etat == "titre":
+                elif ev.key == pygame.K_c and self.etat in ("titre", "honneur"):
                     self.regler()
                 elif ev.key == pygame.K_r and self.etat == "jeu":
                     self.commencer()
@@ -238,40 +288,34 @@ class Jeu:
         cmd = manettes.ensemble(cmds)  # pour les menus : n'importe quel joueur
         self.t += DT
         ok = entree or cmd.saut_presse or cmd.pause_presse
-        if self.etat == "titre":
+        if self.etat == "honneur":
+            self.maj_honneur(cmd, entree)
+            if echap:
+                self.quitter()
+        elif self.etat == "confirmer":
+            if cmd.gauche_presse or cmd.droite_presse:
+                self.confirme = 1 - self.confirme
+                self.son("clic")
+            if (entree or cmd.saut_presse) and self.confirme == 0:
+                self.recommencer_equipe()
+            elif entree or cmd.saut_presse or cmd.pause_presse or echap:
+                self.etat = "honneur"
+        elif self.etat == "titre":
             self.titre_t += DT
             if cmd.gauche_presse or cmd.droite_presse:
                 choix = (self.niveau + cmd.droite_presse - cmd.gauche_presse) % self.ouvertes
                 if choix != self.niveau:
                     self.niveau = choix
                     self.son("clic")
-            if self.titre_t > 0.5 and (entree or cmd.saut_presse):
-                if self.pret:
-                    self.partir(None, self.niveau)
-                else:
-                    self.etat = "mode"
-                    self.son("clic")
-            elif self.titre_t > 0.5 and cmd.action_presse:  # changer de mode ou de joueurs
-                self.etat = "mode"
-                self.son("clic")
-            elif self.titre_t > 0.5 and cmd.coucou_presse:
-                self.etat, self.reussite = "honneur", None
-                self.son("clic")
-            elif echap:
-                self.quitter()
-        elif self.etat == "mode":
-            if cmd.gauche_presse or cmd.droite_presse:
-                self.choix_mode = (self.choix_mode + cmd.droite_presse - cmd.gauche_presse) % len(MODES)
-                self.son("clic")
-            if entree or cmd.saut_presse:
-                self.mode = MODES[self.choix_mode][0]
-                self.ecrire_nom(0)
-            elif echap or cmd.pause_presse:
-                self.etat = "titre"
+            if self.titre_t > 0.3 and (entree or cmd.saut_presse):
+                self.partir(None, self.niveau)
+            elif echap or cmd.pause_presse:  # retour au tableau d'honneur
+                self.sauver()
+                self.etat = "honneur"
         elif self.etat == "nom":
             self.maj_nom(cmds[min(self.qui, len(cmds) - 1)], tape, entree)
             if echap:
-                self.etat = "mode"
+                self.etat = "honneur"
         elif self.etat == "voyage":
             v = self.voyage
             v["t"] += DT
@@ -282,30 +326,30 @@ class Jeu:
                 self.etat, self.feux, self.fusees = "fin", [], []
                 self.tout_en_fete()
                 self.son("bravo")
-                if self.chrono_ok:
-                    noms = [n for n in self.noms[:self.joueurs()]]
-                    self.reussite = palmares.ajouter(noms, self.mode, self.chrono)
-                    self.chrono_ok = False
+                e = self.equipe
+                e["fini"] = True
+                if e["meilleur"] is None or self.chrono < e["meilleur"]:
+                    e["meilleur"] = round(self.chrono, 1)
+                self.sauver()
             elif v["t"] >= sortie + vol + entree_:
                 self.partie, self.niveau = v["partie"], v["vers"]
                 self.etat, self.pause = "jeu", False
         elif self.etat == "fin":
             self.maj_feux()
-            if ok or echap:
-                self.etat = "honneur" if self.reussite and not echap else "titre"
-                self.titre_t, self.niveau = 3.0, 0
+            if ok or echap:  # retour au tableau d'honneur, sur l'équipe qui vient de finir
+                self.etat = "honneur"
+                self.choix = [[m for m, _, _ in MODES].index(self.mode), self.colonne_de(self.equipe)]
                 self.salles, self.vignettes = {}, {}
-        elif self.etat == "honneur":
-            if ok or echap or cmd.coucou_presse:
-                self.etat, self.titre_t = "titre", 3.0
         elif self.etat == "jeu":
             p = self.partie
             if echap:
-                self.etat, self.titre_t, self.chrono_ok = "titre", 3.0, False
+                self.sauver()
+                self.etat, self.titre_t = "titre", 1.0
             elif p.gagne_t is not None and p.gagne_t > 2.5 and (cmd.saut_presse or entree):
                 suivante = p.i_niveau + 1
                 self.ouvertes = max(self.ouvertes, min(suivante + 1, len(NIVEAUX)))
                 self.partir(p.i_niveau, suivante if suivante < len(NIVEAUX) else None)
+                self.sauver()
             elif cmd.pause_presse or (self.pause and entree):
                 self.pause = not self.pause
             elif not self.pause:
@@ -316,6 +360,32 @@ class Jeu:
             self.animer_salles()
         self.musique.maj(self.ambiance(), DT)
         self.dessiner()
+
+    def colonne_de(self, equipe):
+        """La ligne de cette équipe dans sa colonne (0 est « nouveau »)."""
+        return 1 + palmares.classement(self.equipes, equipe["mode"]).index(equipe)
+
+    def maj_honneur(self, cmd, entree):
+        """Le tableau d'honneur : la croix choisit une colonne (seul, à deux, parent et
+        enfant) et une ligne ; le bouton du bas crée une équipe ou choisit celle-là."""
+        avant = list(self.choix)
+        col, ligne = self.choix
+        if cmd.gauche_presse or cmd.droite_presse:
+            col = (col + cmd.droite_presse - cmd.gauche_presse) % len(MODES)
+        self.choix[0] = col
+        n = len(self.colonne()) + 1
+        if cmd.haut_presse or cmd.bas_presse:
+            ligne = (ligne + cmd.bas_presse - cmd.haut_presse) % n
+        self.choix = [col, min(ligne, n - 1)]
+        if self.choix != avant:
+            self.son("clic")
+        ligne = self.choix[1]
+        if entree or cmd.saut_presse:
+            if ligne == 0:  # une nouvelle équipe : chacun écrit son nom
+                self.mode, self.noms, self.equipe = MODES[col][0], ["", ""], None
+                self.ecrire_nom(0)
+            else:
+                self.choisir_equipe(self.colonne()[ligne - 1])
 
     def ecrire_nom(self, qui):
         """Le joueur qui écrit son nom ; s'il en a déjà un, on se place sur « C'est fini »."""
@@ -353,9 +423,15 @@ class Jeu:
                 self.noms[self.qui] = nom
                 if self.qui + 1 < self.joueurs():
                     self.ecrire_nom(self.qui + 1)
-                else:
-                    self.pret = True
-                    self.partir(None, self.niveau)
+                else:  # une équipe qui existe déjà (mêmes noms) est reprise, sinon on la crée
+                    noms = self.noms[:self.joueurs()]
+                    equipe = next((e for e in self.equipes if e["mode"] == self.mode and e["noms"] == noms), None)
+                    if equipe is None:
+                        equipe = palmares.nouvelle(self.mode, noms)
+                        self.equipes.append(equipe)
+                        palmares.enregistrer(self.equipes)
+                    self.choix = [[m for m, _, _ in MODES].index(self.mode), self.colonne_de(equipe)]
+                    self.choisir_equipe(equipe)
                 return
             elif len(t) == 1 and (t.isalpha() or t == "-") and len(nom) < NOM_MAX:
                 nom += t.upper() if not nom or nom[-1] == "-" else t.lower()
@@ -381,11 +457,11 @@ class Jeu:
         e = self.ecran
         if self.etat == "titre":
             self.dessiner_accueil(e)
-        elif self.etat in ("mode", "nom", "honneur"):
+        elif self.etat in ("nom", "honneur", "confirmer"):
             self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
             e.blit(self.voile, (0, 0))
-            {"mode": self.dessiner_modes, "nom": self.dessiner_nom,
-             "honneur": self.dessiner_honneur}[self.etat](e)
+            {"nom": self.dessiner_nom, "honneur": self.dessiner_honneur,
+             "confirmer": self.dessiner_confirmer}[self.etat](e)
         elif self.etat == "voyage":
             self.dessiner_voyage(e)
         elif self.etat == "fin":
@@ -393,14 +469,11 @@ class Jeu:
             self.dessiner_feux(e)
             poser(e, anime("vampire", self.t), 640, 236 - 8 * abs(math.sin(self.t * 3)), echelle=0.8)
             ecrire(e, "Tout le Bled est en fête !", 76, OR, centre=(L // 2, 620))
-            if self.reussite:
-                ecrire(e, f"En {palmares.duree(self.reussite['temps'])} !   "
-                          f"{BOUTONS['saut'].capitalize()} : le tableau d'honneur", 32, BLANC, centre=(L // 2, 685))
-            else:
-                ecrire(e, f"{BOUTONS['saut'].capitalize()} : retour à l'accueil", 32, BLANC, centre=(L // 2, 685))
+            ecrire(e, f"En {palmares.duree(self.chrono)} !   "
+                      f"{BOUTONS['saut'].capitalize()} : le tableau d'honneur", 32, BLANC, centre=(L // 2, 685))
         else:
             self.partie.dessiner(e)
-            if self.chrono_ok:  # le temps, dans la frise, tout à droite
+            if self.equipe:  # le temps, dans la frise, tout à droite
                 dessin.rect(e, (20, 16, 34), (1160, 8, 110, 64), border_radius=18)
                 m, sec = divmod(int(self.chrono), 60)
                 ecrire(e, f"{m}:{sec:02d}", 34, BLANC, centre=(1215, 41))
@@ -409,60 +482,32 @@ class Jeu:
                 voile.fill((10, 10, 30, 150))
                 e.blit(voile, (0, 0))
                 ecrire(e, "Pause", 90, BLANC, centre=(L // 2, 300))
-                ecrire(e, f"{BOUTONS['pause'].capitalize()} : continuer   Échap : accueil   R : recommencer", 32, BLANC,
+                ecrire(e, f"{BOUTONS['pause'].capitalize()} : continuer   Échap : le Bled   R : recommencer", 32, BLANC,
                        centre=(L // 2, 400))
 
     def dessiner_accueil(self, e):
-        """Le vampire arrive en volant et se pose dans la cour du Bled."""
+        """Le Bled vu de la cour, avec les personnages de l'équipe posés dans la cour ;
+        on choisit la salle parmi celles déjà atteintes."""
         self.dehors.dessiner(e, self.t, self.vues(), set(self.salles), cible=self.niveau)
-        u = self.titre_t / 3.0
-        if u < 1:
-            x, y = bezier((-80, 160), ARRIVEE, doux(u), hauteur=60)
-            poser(e, "vampire_saut@0", x, y - 19, echelle=0.6)
-        else:
-            poser(e, anime("vampire", self.t), ARRIVEE[0], ARRIVEE[1] - 19, echelle=0.6)
+        for k, (nom, _) in reversed(list(enumerate(PERSONNAGES[self.mode]))):
+            echelle = 0.6 if nom != "petit" else 0.45
+            poser(e, anime(nom, self.t + k), ARRIVEE[0] + 34 * k, ARRIVEE[1] - 32 * echelle, echelle=echelle)
         ecrire(e, TITRE, 100, ORANGE, centre=(L // 2, 56))
         ecrire(e, "Mets le Bled en fête pour Halloween !", 34, BLANC, centre=(L // 2, 116))
-        salle = f"Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
+        salle = f"{' et '.join(self.noms[:self.joueurs()])} — Salle {self.niveau + 1} : {NIVEAUX[self.niveau]['nom']}"
         consigne = f"Appuie sur le {BOUTONS['saut']} pour commencer"
         if self.ouvertes > 1:
             salle = f"<   {salle}   >"
             consigne += "   (la croix : choisir la salle)"
-        if self.pret:
-            mode = next(nom for code, nom, _ in MODES if code == self.mode)
-            ecrire(e, f"{mode} : {' et '.join(self.noms[:self.joueurs()])}   "
-                      f"({BOUTONS['action']} : changer)", 28, BLANC, centre=(L // 2, 566))
-        ecrire(e, salle, 38, BLANC, centre=(L // 2, 608))
-        ecrire(e, consigne, 32, OR, centre=(L // 2, 650))
-        ecrire(e, f"{self.entrees.nom()}      {BOUTONS['coucou'].capitalize()} : le tableau d'honneur   "
-                  "C : manettes   F : plein écran   M : musique   Échap : quitter",
-               22, BLANC, centre=(L // 2, 696))
+        ecrire(e, salle, 38, BLANC, centre=(L // 2, 612))
+        ecrire(e, consigne, 32, OR, centre=(L // 2, 652))
+        ecrire(e, f"{self.entrees.nom()}      Échap ou {BOUTONS['pause']} : le tableau d'honneur   "
+                  "C : manettes   F : plein écran   M : musique", 22, BLANC, centre=(L // 2, 696))
 
     def dessiner_perso(self, e, mode, k, x, y, echelle=1.0):
         """Le personnage k d'une façon de jouer, qui sautille."""
         nom = PERSONNAGES[mode][k][0]
         poser(e, anime(nom, self.t + k), x, y - 6 * abs(math.sin(self.t * 3 + k)), k == 1, echelle=echelle)
-
-    def dessiner_modes(self, e):
-        ecrire(e, "Comment voulez-vous jouer ?", 70, ORANGE, centre=(L // 2, 90))
-        for k, (mode, nom, explication) in enumerate(MODES):
-            x, choisi = L // 2 + (k - 1) * 410, k == self.choix_mode
-            dessin.rect(e, (34, 26, 56) if choisi else (22, 18, 36), (x - 190, 170, 380, 390), border_radius=24)
-            dessin.rect(e, OR if choisi else (80, 70, 100), (x - 190, 170, 380, 390), 4 if choisi else 2,
-                        border_radius=24)
-            persos = PERSONNAGES[mode]
-            for i in range(len(persos)):
-                self.dessiner_perso(e, mode, i, x + (i - (len(persos) - 1) / 2) * 80, 270, 1.6)
-            ecrire(e, nom, 46, OR if choisi else BLANC, centre=(x, 370))
-            for i, ligne in enumerate(envelopper(explication, 28, 330)):
-                ecrire(e, ligne, 28, BLANC, centre=(x, 420 + i * 30))
-        mode = MODES[self.choix_mode][0]
-        if mode != "solo":
-            qui = ("Parent", "Enfant") if mode == "parent" else ("Joueur 1", "Joueur 2")
-            ecrire(e, f"{qui[0]} : {self.entrees.nom(0)}      {qui[1]} : {self.entrees.nom(1)}", 26, BLANC,
-                   centre=(L // 2, 600))
-        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : c'est parti !   "
-                  f"{BOUTONS['pause'].capitalize()} : retour", 32, OR, centre=(L // 2, 660))
 
     def dessiner_nom(self, e):
         ecrire(e, QUI[self.mode][self.qui], 70, ORANGE, centre=(L // 2, 80))
@@ -489,27 +534,66 @@ class Jeu:
         ecrire(e, "(ou tape ton nom au clavier, puis Entrée)", 24, BLANC, centre=(L // 2, 680))
 
     def dessiner_honneur(self, e):
-        ecrire(e, "Le tableau d'honneur", 76, ORANGE, centre=(L // 2, 70))
+        """Le tableau d'honneur : une colonne par façon de jouer, avec « nouveau » en haut,
+        puis chaque équipe, son meilleur temps ou la salle où elle en est."""
+        ecrire(e, "Le tableau d'honneur", 76, ORANGE, centre=(L // 2, 56))
+        ecrire(e, "Choisis ton nom, ou crée un nouveau joueur", 30, BLANC, centre=(L // 2, 108))
+        visibles = 9
         for k, (mode, nom, _) in enumerate(MODES):
-            x = L // 2 + (k - 1) * 415
-            dessin.rect(e, (22, 18, 36), (x - 200, 125, 400, 500), border_radius=24)
-            ecrire(e, nom, 40, OR, centre=(x, 160))
-            classement = palmares.classement(mode)
-            if not classement:
-                ecrire(e, "Personne encore !", 28, (170, 160, 190), centre=(x, 230))
-            for i, r in enumerate(classement[:10]):
-                y = 210 + i * 40
-                couleur = OR if r == self.reussite and int(self.t * 3) % 2 else BLANC
-                temps, noms = palmares.duree(r["temps"]), " et ".join(r["noms"])
-                taille = 28 if police(28).size(noms)[0] / ZOOM < 300 - police(28).size(temps)[0] / ZOOM else 21
-                ecrire(e, f"{i + 1}.", 28, couleur, gauche=(x - 185, y - 10))
-                ecrire(e, noms, taille, couleur, gauche=(x - 150, y - 10 + (28 - taille) / 2))
-                ecrire(e, temps, 28, couleur, gauche=(x + 188 - police(28).size(temps)[0] / ZOOM, y - 10))
-            if self.reussite in classement[10:]:
-                rang = classement.index(self.reussite) + 1
-                ecrire(e, f"Vous : {rang}e, en {palmares.duree(self.reussite['temps'])}", 28, OR,
-                       centre=(x, 600))
-        ecrire(e, f"{BOUTONS['saut'].capitalize()} : retour à l'accueil", 32, BLANC, centre=(L // 2, 670))
+            x, active = L // 2 + (k - 1) * 415, k == self.choix[0]
+            dessin.rect(e, (30, 24, 48) if active else (22, 18, 36), (x - 200, 136, 400, 500), border_radius=24)
+            if active:
+                dessin.rect(e, (90, 76, 120), (x - 200, 136, 400, 500), 2, border_radius=24)
+            persos = PERSONNAGES[mode]
+            for i in range(len(persos)):
+                self.dessiner_perso(e, mode, i, x - 150 + i * 34, 172, 0.6 if persos[i][0] != "petit" else 0.45)
+            ecrire(e, nom, 40, OR, centre=(x + 20, 172))
+            equipes = palmares.classement(self.equipes, mode)
+            lignes = ["+ Nouveau joueur" if mode == "solo" else "+ Nouvelle équipe"] + equipes
+            haut = max(0, min(self.choix[1] - visibles + 2, len(lignes) - visibles)) if active else 0
+            for i, ligne in enumerate(lignes[haut:haut + visibles]):
+                n = haut + i
+                y = 222 + i * 44
+                choisi = active and n == self.choix[1]
+                if choisi:
+                    dessin.rect(e, (64, 48, 96), (x - 190, y - 20, 380, 40), border_radius=12)
+                    dessin.rect(e, OR, (x - 190, y - 20, 380, 40), 2, border_radius=12)
+                if n == 0:
+                    ecrire(e, ligne, 28, OR if choisi else (190, 230, 190), centre=(x, y))
+                    continue
+                noms = " et ".join(ligne["noms"])
+                if ligne["meilleur"] is not None:
+                    droite, couleur_d = palmares.duree(ligne["meilleur"]), OR
+                else:
+                    droite, couleur_d = f"salle {ligne['ouvertes']} / {len(NIVEAUX)}", (170, 160, 190)
+                if ligne["meilleur"] is not None and not ligne["fini"]:
+                    droite = f"salle {ligne['ouvertes']}  ·  {droite}"
+                place = 330 - police(26).size(droite)[0] / ZOOM
+                taille = 28 if police(28).size(noms)[0] / ZOOM < place else 20
+                ecrire(e, noms, taille, BLANC, gauche=(x - 178, y - 9 if taille == 28 else y - 6))
+                ecrire(e, droite, 26, couleur_d, gauche=(x + 180 - police(26).size(droite)[0] / ZOOM, y - 9))
+            if haut + visibles < len(lignes):
+                ecrire(e, "…", 30, BLANC, centre=(x, 620))
+        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : jouer   Échap : quitter", 32, OR,
+               centre=(L // 2, 668))
+        ecrire(e, f"{self.entrees.nom()}      C : manettes   F : plein écran   M : musique", 22, BLANC,
+               centre=(L // 2, 704))
+
+    def dessiner_confirmer(self, e):
+        eq = self.a_confirmer
+        ecrire(e, " et ".join(eq["noms"]), 64, ORANGE, centre=(L // 2, 200))
+        ecrire(e, "Vous avez déjà mis tout le Bled en fête !", 36, BLANC, centre=(L // 2, 280))
+        ecrire(e, f"Meilleur temps : {palmares.duree(eq['meilleur'])}", 32, OR, centre=(L // 2, 330))
+        ecrire(e, "Recommencer depuis la première salle ?", 44, BLANC, centre=(L // 2, 420))
+        for k, texte in enumerate(("Oui", "Non")):
+            x = L // 2 + (k - 0.5) * 260
+            choisi = k == self.confirme
+            dessin.rect(e, (64, 48, 96) if choisi else (30, 24, 46), (x - 100, 470, 200, 64), border_radius=14)
+            if choisi:
+                dessin.rect(e, OR, (x - 100, 470, 200, 64), 3, border_radius=14)
+            ecrire(e, texte, 40, OR if choisi else BLANC, centre=(x, 502))
+        ecrire(e, "(le meilleur temps est gardé)", 26, (190, 180, 210), centre=(L // 2, 580))
+        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : valider", 30, OR, centre=(L // 2, 660))
 
     def dessiner_voyage(self, e):
         v = self.voyage

@@ -1,7 +1,9 @@
-"""Le tableau d'honneur : tous ceux qui ont mis tout le Bled en fête, avec leur
-temps total (le temps passé dans les salles, sans les pauses ni les voyages)."""
+"""Le tableau d'honneur : tous les joueurs (seuls, à deux, parent et enfant), où ils en
+sont et leur meilleur temps. Chaque équipe : {"mode", "noms", "ouvertes" (salles
+atteintes, de 1 à 4), "fini" (le Bled entier est en fête), "chrono" (le temps passé
+dans les salles depuis qu'ils ont commencé, sans les pauses ni les voyages),
+"meilleur" (le meilleur temps, ou None)}. Pas de mot de passe : on choisit son nom."""
 import json
-import time
 from pathlib import Path
 
 FICHIER = Path(__file__).with_name("palmares.json")
@@ -9,26 +11,36 @@ FICHIER = Path(__file__).with_name("palmares.json")
 
 def lire():
     try:
-        return json.loads(FICHIER.read_text())
+        donnees = json.loads(FICHIER.read_text())
     except (OSError, ValueError):
         return []
+    if isinstance(donnees, list):  # l'ancien tableau : seulement des réussites
+        equipes = {}
+        for r in donnees:
+            cle = (r["mode"], tuple(r["noms"]))
+            if cle not in equipes or r["temps"] < equipes[cle]["meilleur"]:
+                equipes[cle] = nouvelle(r["mode"], r["noms"], fini=True, meilleur=r["temps"])
+        return list(equipes.values())
+    return donnees.get("equipes", [])
 
 
-def ajouter(noms, mode, temps):
-    """Enregistre une réussite et la renvoie."""
-    entree = {"noms": noms, "mode": mode, "temps": round(temps, 1),
-              "date": time.strftime("%Y-%m-%d")}
-    liste = lire() + [entree]
+def enregistrer(equipes):
     try:
-        FICHIER.write_text(json.dumps(liste, indent=1, ensure_ascii=False))
+        FICHIER.write_text(json.dumps({"equipes": equipes}, indent=1, ensure_ascii=False))
     except OSError:
         pass
-    return entree
 
 
-def classement(mode):
-    """Les réussites d'une façon de jouer, la plus rapide d'abord."""
-    return sorted((e for e in lire() if e["mode"] == mode), key=lambda e: e["temps"])
+def nouvelle(mode, noms, fini=False, meilleur=None):
+    return {"mode": mode, "noms": list(noms), "ouvertes": 4 if fini else 1, "fini": fini,
+            "chrono": 0.0, "meilleur": meilleur}
+
+
+def classement(equipes, mode):
+    """Les équipes d'une façon de jouer : d'abord celles qui ont un temps (la plus rapide
+    d'abord), puis les autres (les plus avancées d'abord)."""
+    return sorted((e for e in equipes if e["mode"] == mode),
+                  key=lambda e: (e["meilleur"] is None, e["meilleur"] or 0, -e["ouvertes"]))
 
 
 def duree(secondes):

@@ -5,7 +5,7 @@
   saut touche le corbeau quand il s'y pose ;
 - les règles de chaque créature marchent (couteau, deux sauts, bonbons…) ;
 - à deux, personne ne sort de l'écran ; parent et enfant, la laisse ramène l'enfant ;
-- on enchaîne accueil, mode, nom, voyage, salles, grande fête et tableau d'honneur ;
+- on enchaîne tableau d'honneur, nom, Bled, voyage, salles, grande fête, tableau ;\n- une équipe reprend où elle en était ; une équipe qui a fini peut recommencer ;
 - le jeu reste assez rapide (moins de 16 ms par image pour 60 images par seconde).
 """
 import os
@@ -141,21 +141,10 @@ def a_deux():
     verifier(d < 60 and not enfant.vole, f"parent et enfant : l'enfant trop loin s'envole vers le parent ({d:.0f})")
 
 
-def enchainement(mode, noms):
-    j = jeu.Jeu()
-    for _ in range(200):
-        j.image(C())
-    j.image(presse(droite=True))
-    j.image(presse(gauche=True))
-    verifier(j.niveau == 0, "accueil : les salles pas encore atteintes sont fermées")
-    j.image(presse(saut=True))
-    while jeu.MODES[j.choix_mode][0] != mode:
-        j.image(presse(droite=True))
-        j.image(C())
-    j.image(presse(saut=True))
-    verifier(j.etat == "nom", f"mode « {mode} » choisi : on écrit son nom")
+def taper(j, noms):
+    """Écrit les noms à la manette, sur le clavier de l'écran."""
     for nom in noms:
-        for lettre in nom:  # à la manette, sur le clavier de l'écran
+        for lettre in nom:
             ligne = next(i for i, l in enumerate(jeu.GRILLE) if lettre.upper() in l)
             col = jeu.GRILLE[ligne].index(lettre.upper())
             while j.curseur[0] != ligne:
@@ -171,11 +160,28 @@ def enchainement(mode, noms):
             j.image(C())
         j.image(presse(saut=True))
         j.image(C())
-    verifier(j.noms[:len(noms)] == noms and j.etat == "voyage", f"noms écrits : {j.noms[:len(noms)]}")
+
+
+def enchainement(mode, noms):
+    j = jeu.Jeu()
+    verifier(j.etat == "honneur", "au lancement : le tableau d'honneur")
+    while jeu.MODES[j.choix[0]][0] != mode:
+        j.image(presse(droite=True))
+        j.image(C())
+    j.image(presse(saut=True))  # « nouveau »
+    verifier(j.etat == "nom", f"« {mode} » : nouvelle équipe, on écrit son nom")
+    taper(j, noms)
+    verifier(j.etat == "titre" and j.noms[:len(noms)] == noms, f"noms écrits, puis le Bled : {j.noms[:len(noms)]}")
+    for _ in range(30):
+        j.image(C())
+    j.image(presse(droite=True))
+    j.image(presse(gauche=True))
+    verifier(j.niveau == 0, "le Bled : les salles pas encore atteintes sont fermées")
+    j.image(presse(saut=True))
     for _ in range(200):
         j.image(C())
     verifier(j.etat == "jeu" and j.partie.i_niveau == 0 and len(j.partie.vampires) == len(noms),
-             "accueil puis voyage jusqu'à la salle 1")
+             "voyage jusqu'à la salle 1, avec le bon nombre de personnages")
     temps = []
     for i in range(len(NIVEAUX)):
         for _ in range(30):
@@ -196,21 +202,42 @@ def enchainement(mode, noms):
         attendu = ("jeu", i + 1) if i + 1 < len(NIVEAUX) else ("fin", None)
         obtenu = (j.etat, j.partie.i_niveau if j.etat == "jeu" else None)
         verifier(obtenu == attendu, f"salle {i + 1} finie : on arrive à {attendu}")
-    verifier(j.ouvertes == len(NIVEAUX), "toutes les salles finies : on peut toutes les choisir")
-    r = j.reussite
-    verifier(r is not None and r["noms"] == noms and r in palmares.classement(mode) and r["temps"] > 1,
-             f"la réussite est au tableau d'honneur : {r}")
+        if i == 1:  # en cours de partie, on revient au tableau : tout est gardé
+            enregistre = palmares.lire()
+            e = next(e for e in enregistre if e["mode"] == mode and e["noms"] == noms)
+            verifier(e["ouvertes"] == 3 and not e["fini"], f"la progression est enregistrée : {e['ouvertes']} salles")
+    e = j.equipe
+    verifier(e["fini"] and e["meilleur"] and e["meilleur"] > 1, f"fini : meilleur temps {e['meilleur']}")
     j.image(presse(saut=True))
     j.image(C())
-    verifier(j.etat == "honneur", "après la fête : le tableau d'honneur")
+    verifier(j.etat == "honneur" and j.colonne()[j.choix[1] - 1] is e, "après la fête : le tableau, sur l'équipe")
+    meilleur = e["meilleur"]
     j.image(presse(saut=True))
-    for _ in range(200):
-        j.image(C())
+    verifier(j.etat == "confirmer", "une équipe qui a fini : on demande avant de recommencer")
+    j.image(presse(saut=True))  # « non » est choisi d'abord
+    verifier(j.etat == "honneur" and e["fini"], "« non » : rien ne change")
     j.image(presse(saut=True))
-    verifier(j.etat == "voyage" and j.mode == mode, "accueil : le mode est gardé, on repart tout de suite")
+    j.image(presse(gauche=True))
+    j.image(presse(saut=True))
+    verifier(j.etat == "titre" and j.ouvertes == 1 and not j.salles and e["meilleur"] == meilleur,
+             "« oui » : elle repart de la première salle et garde son meilleur temps")
     temps.sort()
     moyen, pire = sum(temps) / len(temps) * 1000, temps[int(len(temps) * 0.99)] * 1000
     verifier(pire < 16, f"vitesse : {moyen:.1f} ms par image en moyenne, {pire:.1f} ms au pire (99 %)")
+
+
+def reprise():
+    """Une équipe en cours de partie reprend avec exactement ses salles atteintes."""
+    palmares.enregistrer([palmares.nouvelle("duo", ["Ana", "Bo"]) | {"ouvertes": 3, "chrono": 75.0}])
+    j = jeu.Jeu()
+    while jeu.MODES[j.choix[0]][0] != "duo":
+        j.image(presse(droite=True))
+    j.image(presse(bas=True))
+    j.image(presse(saut=True))
+    verifier(j.etat == "titre" and j.ouvertes == 3 and j.niveau == 2 and sorted(j.salles) == [0, 1]
+             and j.chrono == 75.0, "reprise : salles 1 et 2 en fête, on choisit parmi les 3 atteintes")
+    j.image(presse(pause=True))
+    verifier(j.etat == "honneur", "le bouton de gauche ramène au tableau d'honneur")
 
 
 if __name__ == "__main__":
@@ -222,7 +249,9 @@ if __name__ == "__main__":
     a_deux()
     palmares.FICHIER = Path(tempfile.mkdtemp()) / "palmares.json"  # pas le vrai tableau
     for mode, noms in (("solo", ["Lou"]), ("duo", ["Lea", "Tom"]), ("parent", ["Papa", "Zoe"])):
-        print(f"De l'accueil à la grande fête ({mode})")
+        print(f"Du tableau d'honneur à la grande fête ({mode})")
         enchainement(mode, noms)
+    print("Reprendre une partie")
+    reprise()
     print("\nTout va bien !" if not erreurs else f"\n{len(erreurs)} problème(s).")
     sys.exit(1 if erreurs else 0)
