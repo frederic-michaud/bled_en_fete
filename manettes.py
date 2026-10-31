@@ -74,6 +74,19 @@ def liaisons_par_defaut(joy):
     return resultat
 
 
+DIRECTIONS = ("gauche", "droite", "haut", "bas")
+
+
+def fusionner(defaut, regle):
+    """Les réglages enregistrés (touche C) remplacent ceux devinés, sauf pour se déplacer :
+    la croix ET le joystick marchent toujours tous les deux."""
+    liaisons = {**defaut, **regle}
+    for a in DIRECTIONS:
+        enregistre = regle.get(a, [])
+        liaisons[a] = enregistre + [l for l in defaut.get(a, []) if l not in enregistre]
+    return liaisons
+
+
 def liaison_active(joy, l):
     try:
         if l[0] == "b":
@@ -129,7 +142,7 @@ class Entrees:
 
     def rescanner(self):
         self.joys = [pygame.joystick.Joystick(i) for i in range(pygame.joystick.get_count())]
-        self.liaisons = [{**liaisons_par_defaut(j), **self.config.get(j.get_guid(), {})}
+        self.liaisons = [fusionner(liaisons_par_defaut(j), self.config.get(j.get_guid(), {}))
                          for j in self.joys]
 
     def nom(self, joueur=None):
@@ -142,7 +155,7 @@ class Entrees:
 
     def enregistrer(self, i, liaisons):
         self.config[self.joys[i].get_guid()] = liaisons
-        self.liaisons[i] = liaisons
+        self.liaisons[i] = fusionner(liaisons_par_defaut(self.joys[i]), liaisons)
         FICHIER.write_text(json.dumps(self.config, indent=1))
 
     def lire(self, joueurs=1, clavier=True):
