@@ -1,0 +1,108 @@
+"""Les salles du château et ce qui s'y cache. C'est ici qu'on change ou qu'on ajoute
+une salle (et alors une fenêtre dans dehors.FENETRES)."""
+
+# Les boutons de la manette, désignés par leur place (pour ceux qui ne connaissent pas
+# les manettes) : la croix pour se déplacer, et les quatre boutons en losange.
+BOUTONS = {"saut": "bouton du bas", "action": "bouton de droite",
+           "coucou": "bouton du haut", "pause": "bouton de gauche"}
+
+# ---- Les salles du château ----
+# Le plafond (rangées 0 et 1 : la frise, où il ne se passe rien), le sol (rangée 17) et
+# les murs des deux bouts sont mis tout seuls.
+# Chaque élément du plan : (rangée, colonne, contenu), une lettre par tuile.
+#   #  pierre      -  planche (on la traverse par-dessous)      V  départ du vampire
+#   c  courge      s  squelette     f  fantôme      b  chauve-souris
+#   t  toile d'araignée              l  chandelier      o  bonbon à ramasser
+# Pour chaque salle : nom, largeur (colonnes), plan, bonbons en poche au départ,
+# corbeau (premier passage, attente entre deux passages, vitesse ; None : pas de
+# corbeau) et aides (colonne à partir de laquelle on affiche le conseil).
+RANGS = 18
+NIVEAUX = [
+    {"nom": "L'entrée", "cols": 48, "poche": 3, "corbeau": None,
+     "plan": [
+         (16, 3, "V"), (16, 8, "c"), (13, 14, "l"), (14, 20, "b"), (16, 23, "o"),
+         (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),
+         (15, 34, "#"), (16, 34, "#"), (16, 41, "s"), (16, 45, "o"),
+     ],
+     "aides": [(1, "Va à côté de la courge, puis bouton du haut : le couteau !"),
+               (11, "Touche le chandelier pour l'allumer"),
+               (17, "Saute sur la chauve-souris (bouton du bas) !"),
+               (22, "Ramasse le bonbon, puis bouton de droite pour le lancer"),
+               (25, "Le fantôme n'a peur que des bonbons : bouton de droite !"),
+               (31, "Grimpe et touche la toile d'araignée"),
+               (38, "Le squelette : saute-lui dessus deux fois ! Les bonbons ne marchent pas")]},
+    {"nom": "Le couloir", "cols": 64, "poche": 3, "corbeau": (30.0, (20.0, 28.0), 90.0),
+     "plan": [
+         (16, 3, "V"),
+         (15, 18, "#"), (16, 18, "#"), (15, 32, "#"), (16, 32, "#"), (15, 48, "#"), (16, 48, "#"),
+         (14, 12, "-----"), (14, 34, "-----"), (14, 52, "-----"),
+         (11, 18, "------"), (11, 40, "------"),
+         (8, 12, "-----"), (8, 26, "------"), (8, 38, "---"), (8, 44, "------"), (8, 56, "------"),
+         (5, 5, "-------"), (5, 22, "-------"), (5, 50, "------"),
+         (16, 10, "c"), (16, 44, "c"),
+         (16, 24, "s"), (16, 56, "s"),
+         (12, 30, "f"), (9, 50, "f"),
+         (13, 15, "b"), (6, 40, "b"),
+         (2, 8, "t"), (2, 53, "t"),
+         (3, 25, "l"),
+         (16, 6, "o"), (10, 20, "o"), (7, 36, "o"), (13, 54, "o"), (16, 61, "o"),
+     ],
+     "aides": [(1, "Plusieurs créatures de chaque sorte : transforme-les toutes !"),
+               (9, ""),
+               (20, "Un corbeau grognon viendra défaire tes décorations : touche-le pour le chasser"),
+               (30, "")]},
+    {"nom": "La grande salle", "cols": 80, "poche": 3, "corbeau": (20.0, (14.0, 22.0), 110.0),
+     "plan": [
+         (2, 2, "t"), (2, 37, "t"), (2, 77, "t"),
+         (3, 32, "l"), (3, 55, "l"), (3, 66, "l"),
+         (4, 42, "b"), (3, 61, "b"), (7, 12, "b"),
+         (5, 30, "-----"), (5, 52, "------"),
+         (8, 2, "-----"), (8, 24, "------"), (8, 36, "-------"), (8, 44, "------"), (8, 62, "-----"),
+         (8, 69, "----------"),
+         (11, 8, "-----"), (11, 18, "------"), (11, 36, "------"), (11, 54, "------"), (11, 70, "------"),
+         (14, 13, "------"), (14, 30, "------"), (14, 46, "-----"), (14, 62, "------"),
+         (12, 27, "f"), (9, 50, "f"), (6, 71, "f"),
+         (15, 28, "#"), (16, 28, "#"), (15, 48, "#"), (16, 48, "#"), (15, 64, "#"), (16, 64, "#"),
+         (13, 15, "o"), (13, 32, "o"), (10, 38, "o"), (7, 46, "o"), (4, 54, "o"), (10, 72, "o"),
+         (16, 60, "o"), (16, 17, "o"),
+         (16, 3, "V"), (16, 10, "c"), (16, 22, "s"), (16, 40, "c"), (16, 55, "s"), (16, 72, "c"),
+     ],
+     "aides": []},
+    {"nom": "La tour", "cols": 96, "poche": 2, "corbeau": (12.0, (9.0, 15.0), 140.0),
+     "plan": [
+         (14, 24, "#"), (15, 24, "#"), (16, 24, "#"),
+         (13, 48, "#"), (14, 48, "#"), (15, 48, "#"), (16, 48, "#"),
+         (14, 72, "#"), (15, 72, "#"), (16, 72, "#"),
+         (14, 8, "-----"), (14, 30, "-----"), (14, 44, "---"), (14, 56, "-----"), (14, 78, "-----"),
+         (11, 14, "------"), (11, 36, "------"), (11, 50, "------"), (11, 64, "------"), (11, 86, "------"),
+         (8, 8, "-----"), (8, 20, "------"), (8, 42, "------"), (8, 58, "------"), (8, 65, "----"),
+         (8, 74, "------"), (8, 88, "-----"),
+         (5, 28, "------"), (5, 52, "------"), (5, 82, "------"),
+         (16, 3, "V"),
+         (16, 12, "c"), (16, 40, "c"), (16, 84, "c"),
+         (16, 18, "s"), (16, 60, "s"), (16, 90, "s"),
+         (12, 27, "f"), (9, 52, "f"), (6, 66, "f"), (12, 80, "f"),
+         (4, 20, "b"), (3, 44, "b"), (7, 70, "b"), (3, 90, "b"),
+         (2, 10, "t"), (2, 47, "t"), (2, 76, "t"),
+         (3, 31, "l"), (3, 55, "l"), (3, 85, "l"),
+         (13, 10, "o"), (10, 38, "o"), (7, 45, "o"), (16, 66, "o"), (4, 30, "o"), (10, 88, "o"),
+     ],
+     "aides": []},
+]
+
+# Ce qui se cache dans le château : image effrayante, image de fête, règle, message.
+# Règles : « couteau » = se mettre à côté et sortir le couteau (bouton du haut) ;
+# « touche » = il suffit de la toucher ; « mechant » = lui sauter dessus, mais le
+# toucher de côté fait « Bouh ! » (le squelette : deux fois, il tombe d'abord en tas
+# d'os) ; « bonbon » = seul un bonbon lancé marche, on passe à travers et ça fait
+# « Bouh ! ». Un bonbon lancé (bouton de droite) transforme tout sauf PAS_DE_BONBON.
+GENRES = {
+    "c": ("courge", "soupe", "couteau", "Miam, de la soupe !"),
+    "s": ("squelette", "squelette_danse", "mechant", "Ça danse !"),
+    "f": ("fantome_peur", "fantome_gentil", "bonbon", "Il est tout gentil !"),
+    "b": ("chauve_souris", "ballon", "mechant", "Un ballon !"),
+    "t": ("toile", "guirlande", "touche", "Une guirlande !"),
+    "l": ("chandelier_eteint", "chandelier_allume", "touche", "De la lumière !"),
+}
+PAS_DE_BONBON = {"c": "Il faut un couteau !", "s": "Il n'aime pas les bonbons !"}
+AU_SOL = "cs"               # posés sur le sol (les autres flottent ou pendent)
