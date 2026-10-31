@@ -341,7 +341,6 @@ export class Jeu {
       } else if (ev.ctrl) continue;   // Cmd+R, Ctrl+F… : pour le navigateur
       else if (ev.nom === "f") this.basculer_plein_ecran();
       else if (ev.nom === "m") this.musique.active = !this.musique.active;
-      else if (ev.nom === "r" && this.etat === "jeu") this.commencer();
     }
     if (cmds === null) cmds = this.entrees.lire(this.joueurs(), this.etat !== "nom");
     else if (cmds instanceof Commande) cmds = [cmds];
@@ -551,7 +550,7 @@ export class Jeu {
       if (this.pause) {
         voiler(e, [10, 10, 30, 150]);
         ecrire(e, "Pause", 90, BLANC, { centre: [L / 2, 300] });
-        ecrire(e, `${majuscule(BOUTONS.pause)} : continuer   Échap : le Bled   R : recommencer`, 32, BLANC,
+        ecrire(e, `${majuscule(BOUTONS.pause)} : continuer   Échap : le Bled (pour recommencer la salle)`, 32, BLANC,
                { centre: [L / 2, 400] });
       }
     }
