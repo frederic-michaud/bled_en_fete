@@ -39,13 +39,14 @@ class Jeu:
         pygame.init()
         # On dessine sur une grande image, que la carte graphique étale dans la fenêtre.
         self.ecran = pygame.Surface((L * ZOOM, H * ZOOM))
-        self.plein_ecran = False
+        self.plein_ecran = True   # on commence en plein écran (F : en fenêtre, et retour)
         try:
             self.fenetre = pygame.Window(TITRE, (L, H), resizable=True, allow_high_dpi=True)
             self.rendu = video.Renderer(self.fenetre, accelerated=1, vsync=True)
             self.rendu.logical_size = self.ecran.get_size()
             self.texture = video.Texture(self.rendu, self.ecran.get_size(), streaming=True)
             pygame.mouse.set_visible(False)
+            self.fenetre.set_fullscreen(True)
         except (pygame.error, RuntimeError):
             self.rendu = None  # pas d'écran disponible (essais automatiques)
         self.horloge = pygame.time.Clock()
