@@ -1,23 +1,14 @@
 // Lecture du clavier et des manettes du navigateur (port de manettes.py), pour un ou deux
-// joueurs. Seul, tout le clavier et toutes les manettes pilotent le joueur ; à deux, le
-// joueur 1 a la manette 1 et la moitié gauche du clavier, le joueur 2 la manette 2 et la
-// moitié droite. On garde aussi les touches tapées (pour écrire son nom, Échap, Entrée…).
+// joueurs. Dans une salle, chaque joueur a ses touches (réglables : voir touches.js) et sa
+// manette ; seul, toutes les manettes pilotent le joueur. Dans les menus, les touches sont
+// toujours les mêmes : flèches pour choisir, espace (ou Entrée) pour valider. On garde aussi
+// les touches tapées (pour écrire son nom, Échap, Entrée, régler les touches…).
 import { ACTIONS, Commande } from "./commandes.js";
+import { RESERVEES, touches, toutes } from "./touches.js";
 
-// On désigne les touches par la lettre écrite dessus (event.key en minuscules) : ça marche
-// en AZERTY, QWERTZ et QWERTY. Flèches : « ArrowLeft »… ; espace : " " ; Maj de droite :
-// « ShiftRight ». Joueur 1 à gauche du clavier (Q ou A, D, espace, X, C), joueur 2 à
-// droite (flèches, K, L).
-export const CLAVIER_DUO = [
-  { gauche: ["q", "a"], droite: ["d"], haut: [], bas: ["s"],
-    saut: [" ", "z", "w"], action: ["x"], coucou: ["c"], pause: ["p"] },
-  { gauche: ["ArrowLeft"], droite: ["ArrowRight"], haut: [], bas: ["ArrowDown"],
-    saut: ["ArrowUp", "ShiftRight"], action: ["k"], coucou: ["l"], pause: ["p"] },
-];
-// seul : tout le clavier
-export const CLAVIER = Object.fromEntries(ACTIONS.map(a => [a, [...CLAVIER_DUO[0][a], ...CLAVIER_DUO[1][a]]]));
-export const NOM_CLAVIER = "Clavier : flèches, espace, X, C";
-export const NOMS_CLAVIER_DUO = ["clavier : Q D, espace, X, C", "clavier : flèches, K, L"];
+// Les menus : des touches fixes, quel que soit le réglage des joueurs.
+export const CLAVIER_MENU = { gauche: ["ArrowLeft"], droite: ["ArrowRight"], haut: ["ArrowUp"],
+  bas: ["ArrowDown"], saut: [" "], action: [], coucou: [], pause: [] };
 
 // Manettes du navigateur, disposition « standard » : bouton 0 = bas (saut), 1 = droite
 // (bonbon), 3 = haut (couteau), 2 = gauche et 9 = Start (pause) ; croix 12 haut, 13 bas,
@@ -28,10 +19,11 @@ const AXES = { gauche: [0, -1], droite: [0, 1], haut: [1, -1], bas: [1, 1] };
 const SEUIL = 0.5;
 
 // Les touches dont on empêche l'effet du navigateur (défiler la page, revenir en arrière…).
-const TOUCHES_DU_JEU = new Set([...Object.values(CLAVIER).flat(),
-  "Backspace", "Enter", "Escape", "ArrowUp", "Tab", "f", "m"]);
+function du_jeu(nom) {
+  return RESERVEES.has(nom) || toutes().has(nom) || nom.startsWith("Arrow") || nom === " ";
+}
 
-/** Le nom d'une touche, comme dans CLAVIER_DUO. */
+/** Le nom d'une touche, comme dans touches.js. */
 export function nom_touche(ev) {
   if (ev.code === "ShiftRight") return "ShiftRight";
   return ev.key && ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
@@ -52,10 +44,11 @@ export class Entrees {
     this.enfoncees = new Map();   // code de la touche → son nom (touches tenues)
     this.tapees = [];             // les touches appuyées depuis la dernière lecture
     this.frappees = new Set();    // touches appuyées depuis la dernière lecture (même déjà lâchées)
-    this.precedent = [0, 1].map(() => Object.fromEntries(ACTIONS.map(a => [a, false])));
+    // ce qui était appuyé à la lecture d'avant : joueur 1, joueur 2, menus
+    this.precedent = [0, 1, 2].map(() => Object.fromEntries(ACTIONS.map(a => [a, false])));
     cible.addEventListener("keydown", ev => {
       const nom = nom_touche(ev);
-      if (!(ev.ctrlKey || ev.metaKey || ev.altKey) && TOUCHES_DU_JEU.has(nom)) ev.preventDefault();
+      if (!(ev.ctrlKey || ev.metaKey || ev.altKey) && du_jeu(nom)) ev.preventDefault();
       this.enfoncees.set(ev.code || nom, nom);
       this.frappees.add(nom);   // une touche vite tapée et lâchée entre deux images compte quand même
       if (!ev.repeat) this.tapees.push({ nom, key: ev.key, ctrl: ev.ctrlKey || ev.metaKey || ev.altKey });
@@ -78,34 +71,35 @@ export class Entrees {
     return [...pads].filter(p => p && p.connected);
   }
 
-  /** Les manettes (seul), ou ce qui pilote ce joueur (à deux). */
-  nom(joueur = null) {
-    const joys = this.joys();
-    if (joueur === null) return joys.map(j => j.id).join(", ") || NOM_CLAVIER;
-    if (joueur < joys.length) return joys[joueur].id;
-    return NOMS_CLAVIER_DUO[joueur];
+  /** Une Commande d'après ces touches et ces manettes ; i : sa place dans precedent. */
+  commande(i, clavier, manettes, tenues) {
+    const c = new Commande();
+    for (const a of ACTIONS) {
+      const actif = (clavier !== null && (clavier[a] || []).some(k => tenues.has(k)))
+        || manettes.some(pad => manette_active(pad, a));
+      c[a] = actif;
+      c[a + "_presse"] = actif && !this.precedent[i][a];
+      this.precedent[i][a] = actif;
+    }
+    return c;
   }
 
-  /** Une Commande par joueur (clavier = false : les manettes seulement, pendant qu'on
-   * tape son nom au clavier). */
-  lire(joueurs = 1, clavier = true) {
-    const tenues = new Set([...this.enfoncees.values(), ...this.frappees]);
+  tenues() {
+    const t = new Set([...this.enfoncees.values(), ...this.frappees]);
     this.frappees.clear();
-    const joys = this.joys();
-    const resultat = [];
-    for (let i = 0; i < joueurs; i++) {
-      const touches = joueurs === 1 ? CLAVIER : CLAVIER_DUO[i];
-      const manettes = joueurs === 1 ? joys : joys.slice(i, i + 1);
-      const c = new Commande();
-      for (const a of ACTIONS) {
-        const actif = (clavier && touches[a].some(k => tenues.has(k)))
-          || manettes.some(pad => manette_active(pad, a));
-        c[a] = actif;
-        c[a + "_presse"] = actif && !this.precedent[i][a];
-        this.precedent[i][a] = actif;
-      }
-      resultat.push(c);
-    }
-    return resultat;
+    return t;
+  }
+
+  /** Dans une salle : une Commande par joueur, avec ses touches et sa manette. */
+  lire(joueurs = 1) {
+    const tenues = this.tenues(), joys = this.joys(), t = touches();
+    return [...Array(joueurs).keys()].map(i =>
+      this.commande(i, t[i], joueurs === 1 ? joys : joys.slice(i, i + 1), tenues));
+  }
+
+  /** Dans les menus : une seule Commande, touches fixes et toutes les manettes
+   * (clavier = false : les manettes seulement, pendant qu'on tape son nom). */
+  lire_menu(clavier = true) {
+    return this.commande(2, clavier ? CLAVIER_MENU : null, this.joys(), this.tenues());
   }
 }

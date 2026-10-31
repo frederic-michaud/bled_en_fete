@@ -6,8 +6,14 @@ chargement immédiat, haute définition, 60 images/s. C'est un port fidèle des 
 Python (mêmes noms, mêmes règles : la logique des salles donne les mêmes trajectoires) ;
 `js/INTERFACES.md` décrit le rôle de chaque fichier et les conventions (toiles, points du
 jeu). Essayer : `python3 -m http.server` à la racine puis `http://localhost:8000/js/`.
-`js/publier.sh` la publie sur GitHub Pages, à `…/bled_en_fete/js/` (à côté de la version
-Python pour le web, archivée : étiquette `archive/web-pygbag`). Les essais automatiques
+`js/publier.sh` la publie sur GitHub Pages, à la racine du site
+(https://frederic-michaud.github.io/bled_en_fete/) ; l'ancienne version Python pour le web
+est à `…/ancienne-version-python-pygbag/` (étiquette `archive/web-pygbag`, branche `web`).
+Clavier (suisse, QWERTZ ; `js/touches.js`) : seul ou joueur 1 : ← → bouger, ↑ sauter,
+↓ couteau, espace bonbon, P pause ; joueur 2 : A D, W, S couteau, Q bonbon, P. Réglables
+depuis le tableau d'honneur (touche T), gardées dans le navigateur. Les textes des salles
+nomment les touches réglées (`touches.libelle`). Les menus ont des touches fixes : flèches,
+espace ou Entrée, Échap. Pas de touche R (trop facile de recommencer par erreur). Les essais automatiques
 (Playwright, comparaisons avec le Python) vont dans `js/essais/`, ignoré par git.
 
 **Version web** (branche `web`) : le même jeu dans un navigateur, avec pygbag (Python en

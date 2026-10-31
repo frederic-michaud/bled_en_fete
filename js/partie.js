@@ -8,7 +8,8 @@
 // navigateur (essais sous Node).
 import * as decors from "./decors.js";
 import { Commande } from "./commandes.js";
-import { AU_SOL, BOUTONS, GENRES, NIVEAUX, PAS_DE_BONBON, RANGS, majuscule } from "./niveaux.js";
+import { AU_SOL, GENRES, NIVEAUX, PAS_DE_BONBON, RANGS, majuscule } from "./niveaux.js";
+import { libelle, libelle_pour } from "./touches.js";
 import {
   BLANC, DT, FESTIF, H, L, OR, ORANGE, T, TAILLES, Rect, aleatoire as random, anime, arrondi,
   coller, css, dessin, ecrire, envelopper, largeur_texte, melange, poser, range,
@@ -956,7 +957,9 @@ export class Partie {
     const courges = new Set(this.vampires.map(v => v.courge_proche));
     courges.delete(null);
     for (const ch of courges) {  // la courge attend le couteau
-      ecrire(ctx, `Couteau : ${BOUTONS.coucou} !`, 24, OR,
+      // la touche du couteau de celui qui est à côté de la courge
+      const qui = this.vampires.findIndex(v => v.courge_proche === ch);
+      ecrire(ctx, `Couteau : ${libelle(Math.max(0, qui), "coucou")} !`, 24, OR,
         { centre: [ch.x - cx, ch.y - ch.h / 2 - 18 - 3 * Math.abs(Math.sin(this.t * 5))] });
     }
     if (this.corbeau) this.corbeau.dessiner(ctx, cx);
@@ -1005,7 +1008,7 @@ export class Partie {
       ecrire(ctx, "La salle est prête pour la fête !", 72, OR, { centre: [fdiv(L, 2), 250] });
       if (this.gagne_t > 2.5) {
         let suite = this.i_niveau + 1 < NIVEAUX.length ? "salle suivante" : "la grande fête !";
-        suite = `${majuscule(BOUTONS.saut)} : ${suite}`;
+        suite = `${majuscule(libelle(0, "saut"))} ou Entrée : ${suite}`;
         ecrire(ctx, suite, 36, BLANC, { centre: [fdiv(L, 2), 330] });
       }
     }
@@ -1031,6 +1034,16 @@ export class Partie {
   }
 
   /** Le conseil du moment, dans la frise, à droite des bonbons. */
+  /** Un texte où {saut}, {action}, {coucou} (ou {Saut}… avec une majuscule) sont remplacés
+   * par les touches de ceux qui jouent : « flèche du bas », ou à deux « flèche du bas (ou
+   * touche S) ». */
+  avec_touches(texte) {
+    return texte.replace(/\{(saut|action|coucou|Saut|Action|Coucou)\}/g, (_, a) => {
+      const t = libelle_pour(a.toLowerCase(), this.vampires.length);
+      return a[0] === a[0].toUpperCase() ? majuscule(t) : t;
+    });
+  }
+
   dessiner_conseil(ctx) {
     let conseil = null, couleur = BLANC;
     if (this.gagne_t !== null) {
@@ -1041,10 +1054,9 @@ export class Partie {
     } else if (this.niveau.aides.length) {
       const col = fdiv(this.vampire.x + this.vampire.W / 2, T);
       const aides = this.niveau.aides.filter(([c]) => c <= col);
-      conseil = aides.length ? aides[aides.length - 1][1] : null;
+      conseil = aides.length ? this.avec_touches(aides[aides.length - 1][1]) : null;
     } else if (this.t < 8) {
-      conseil = `Transforme tout !  ${majuscule(BOUTONS.saut)} : sauter   `
-        + `${majuscule(BOUTONS.action)} : bonbon   ${majuscule(BOUTONS.coucou)} : couteau`;
+      conseil = this.avec_touches("Transforme tout !  {Saut} : sauter   {Action} : bonbon   {Coucou} : couteau");
     }
     if (conseil) {
       const lignes = envelopper(ctx, conseil, 26, 700).slice(0, 2);

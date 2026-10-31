@@ -4,14 +4,16 @@
 // Les écrans (Jeu.etat) : « honneur » (le tableau d'honneur, au lancement : on choisit son
 // équipe ou on en crée une), « nom » (chacun écrit son nom), « confirmer » (recommencer une
 // partie finie ?), « titre » (le Bled vu de la cour : on choisit la salle), « voyage »
-// (d'une salle à l'autre), « jeu » (dans une salle) et « fin » (la grande fête).
+// (d'une salle à l'autre), « jeu » (dans une salle), « fin » (la grande fête) et
+// « touches » (régler les touches du clavier, depuis le tableau d'honneur : touche T).
 // Dans le navigateur : pas de réglage des manettes (touche C) ni de « quitter ».
 import { Commande, ensemble } from "./commandes.js";
 import { Entrees } from "./entrees.js";
 import { Musique, ambiance_de, FETE } from "./musique.js";
 import * as palmares from "./palmares.js";
 import { ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, agrandi, bezier, doux, vignette, zoomer } from "./dehors.js";
-import { BOUTONS, CROIX, MODES, NIVEAUX, le, majuscule } from "./niveaux.js";
+import { BOUTONS, CROIX, MODES, NIVEAUX, VALIDER, le, majuscule } from "./niveaux.js";
+import { REGLABLES, RESERVEES, changer, nom_court, remettre, resume, touches } from "./touches.js";
 import { BLANC, DT, ECHELLE, FESTIF, H, L, OR, ORANGE, aleatoire, anime, arrondi, coller, css, dessin,
          ecrire, largeur_texte, melange, poser, toile } from "./outils.js";
 import { PERSONNAGES, Partie } from "./partie.js";
@@ -74,6 +76,9 @@ export class Jeu {
     this.mode = "solo";       // seul, à deux (duo) ou parent et enfant (parent)
     this.noms = ["", ""];     // le nom de chaque joueur
     this.qui = 0;             // le joueur qui écrit son nom
+    this.reglage = [0, 0];    // écran des touches : le joueur (colonne) et l'action (ligne)
+    this.attente = false;     // on attend la nouvelle touche de l'action choisie
+    this.touche_lue = null;   // la touche appuyée pendant cette attente
     this.curseur = [0, 0];    // la lettre choisie dans GRILLE (ligne, colonne)
     this.chrono = 0.0;        // le temps passé dans les salles depuis le début de la partie
     this.pause = false;
@@ -333,16 +338,27 @@ export class Jeu {
     let echap = false, entree = false;
     const tape = [];  // ce qu'on tape au clavier en écrivant son nom
     for (const ev of this.entrees.prendre_touches()) {
+      if (this.etat === "touches" && this.attente) {  // la nouvelle touche (Échap : on annule)
+        if (!ev.ctrl && this.touche_lue === null) this.touche_lue = ev.nom;
+        continue;
+      }
       if (ev.nom === "Escape") echap = true;
       else if (ev.nom === "Enter") entree = true;
       else if (this.etat === "nom") {
         if (ev.nom === "Backspace") tape.push("Effacer");
         else if (ev.key && ev.key.length === 1 && !ev.ctrl) tape.push(ev.key);
       } else if (ev.ctrl) continue;   // Cmd+R, Ctrl+F… : pour le navigateur
-      else if (ev.nom === "f") this.basculer_plein_ecran();
+      else if (ev.nom === "t" && this.etat === "honneur") {
+        this.etat = "touches";
+        this.reglage = [0, 0];
+        this.son("clic");
+      } else if (ev.nom === "f") this.basculer_plein_ecran();
       else if (ev.nom === "m") this.musique.active = !this.musique.active;
     }
-    if (cmds === null) cmds = this.entrees.lire(this.joueurs(), this.etat !== "nom");
+    if (cmds === null) {  // dans une salle, les touches de chacun ; ailleurs, celles des menus
+      cmds = this.etat === "jeu" ? this.entrees.lire(this.joueurs())
+        : [this.entrees.lire_menu(this.etat !== "nom")];
+    }
     else if (cmds instanceof Commande) cmds = [cmds];
     const cmd = ensemble(cmds);  // pour les menus : n'importe quel joueur
     this.t += DT;
@@ -371,6 +387,8 @@ export class Jeu {
         this.sauver();
         this.etat = "honneur";
       }
+    } else if (this.etat === "touches") {
+      this.maj_touches(cmd, entree, echap);
     } else if (this.etat === "nom") {
       this.maj_nom(cmds[Math.min(this.qui, cmds.length - 1)], tape, entree);
       if (echap) this.etat = "honneur";
@@ -396,6 +414,8 @@ export class Jeu {
         this.niveau = v.vers;
         this.etat = "jeu";
         this.pause = false;
+        // ce qui est déjà tenu (l'espace qui a passé le voyage) ne compte pas comme appuyé
+        this.entrees.lire(this.joueurs());
       }
     } else if (this.etat === "fin") {
       this.maj_feux();
@@ -453,6 +473,41 @@ export class Jeu {
         this.ecrire_nom(0);
       } else {
         this.choisir_equipe(this.colonne()[ligne - 1]);
+      }
+    }
+  }
+
+  /** L'écran des touches : les flèches choisissent un joueur et une action, la barre
+   * d'espace (ou Entrée) attend la nouvelle touche ; la dernière ligne remet les touches de
+   * départ ; Échap revient au tableau d'honneur. */
+  maj_touches(cmd, entree, echap) {
+    if (this.attente) {
+      const k = this.touche_lue;
+      this.touche_lue = null;
+      if (k === "Escape") this.attente = false;
+      else if (k && !RESERVEES.has(k)) {
+        changer(this.reglage[0], REGLABLES[this.reglage[1]][0], k);
+        this.attente = false;
+        this.son("magie");
+      } else if (k) this.son("vide");   // une touche des menus : on ne peut pas la prendre
+      return;
+    }
+    if (echap) {
+      this.etat = "honneur";
+      return;
+    }
+    let [col, ligne] = this.reglage;
+    if (cmd.gauche_presse || cmd.droite_presse) col = 1 - col;
+    if (cmd.haut_presse || cmd.bas_presse) ligne = mod(ligne + cmd.bas_presse - cmd.haut_presse, REGLABLES.length + 1);
+    if (col !== this.reglage[0] || ligne !== this.reglage[1]) this.son("clic");
+    this.reglage = [col, ligne];
+    if (entree || cmd.saut_presse) {
+      if (ligne === REGLABLES.length) {
+        remettre();
+        this.son("magie");
+      } else {
+        this.attente = true;
+        this.touche_lue = null;
       }
     }
   }
@@ -518,7 +573,7 @@ export class Jeu {
 
   dessiner() {
     const e = this.ecran.ctx;
-    const menu = ["nom", "honneur", "confirmer"].includes(this.etat);
+    const menu = ["nom", "honneur", "confirmer", "touches"].includes(this.etat);
     if (!menu) this.fond_menu = null;
     if (this.etat === "titre") {
       this.dessiner_accueil(e);
@@ -530,7 +585,7 @@ export class Jeu {
       }
       coller(e, this.fond_menu, 0, 0);
       ({ nom: () => this.dessiner_nom(e), honneur: () => this.dessiner_honneur(e),
-         confirmer: () => this.dessiner_confirmer(e) })[this.etat]();
+         confirmer: () => this.dessiner_confirmer(e), touches: () => this.dessiner_touches(e) })[this.etat]();
     } else if (this.etat === "voyage") {
       this.dessiner_voyage(e);
     } else if (this.etat === "fin") {
@@ -538,7 +593,7 @@ export class Jeu {
       this.dessiner_feux(e);
       this.dessiner_danse(e);
       ecrire(e, "Tout le Bled est en fête !", 76, OR, { centre: [L / 2, 620] });
-      ecrire(e, `En ${palmares.duree(this.chrono)} !   ${majuscule(BOUTONS.saut)} : le tableau d'honneur`,
+      ecrire(e, `En ${palmares.duree(this.chrono)} !   ${majuscule(VALIDER)} : le tableau d'honneur`,
              32, BLANC, { centre: [L / 2, 685] });
     } else {
       this.partie.dessiner(e);
@@ -568,17 +623,18 @@ export class Jeu {
     }
     ecrire(e, TITRE, 100, ORANGE, { centre: [L / 2, 64] });
     let salle = `${this.noms.slice(0, this.joueurs()).join(" et ")} — Salle ${this.niveau + 1} : ${NIVEAUX[this.niveau].nom}`;
-    let consigne = `Appuie sur ${le(BOUTONS.saut)} pour commencer`;
+    let consigne = `Appuie sur ${le(VALIDER)} pour commencer`;
     if (this.ouvertes > 1) {
       salle = `<   ${salle}   >`;
       consigne += `   (${CROIX} : choisir la salle)`;
     }
     ecrire(e, salle, 38, BLANC, { centre: [L / 2, 624] });
     ecrire(e, consigne, 32, OR, { centre: [L / 2, 664] });
-    if (this.joueurs() === 2) {  // au clavier, à deux : les touches de chacun
-      ecrire(e, `${this.noms[0]} : Q D, espace, X bonbon, C couteau      ` +
-                `${this.noms[1]} : flèches, K bonbon, L couteau`, 24, BLANC, { centre: [L / 2, 700] });
-    }
+    // au clavier : les touches de chacun (réglables depuis le tableau d'honneur, touche T)
+    const rappel = this.joueurs() === 2
+      ? `${this.noms[0]} : ${resume(0)}      ${this.noms[1]} : ${resume(1)}`
+      : `Touches : ${resume(0)}`;
+    ecrire(e, rappel, 22, BLANC, { centre: [L / 2, 700] });
   }
 
   /** La fin : les personnages dansent sur la terrasse du 5e (ils sautillent, se
@@ -673,7 +729,7 @@ export class Jeu {
       });
       if (haut + visibles < lignes.length) ecrire(e, "…", 30, BLANC, { centre: [x, 620] });
     });
-    ecrire(e, `${majuscule(CROIX)} : choisir   ${majuscule(BOUTONS.saut)} : jouer`, 32, OR,
+    ecrire(e, `${majuscule(CROIX)} : choisir   ${majuscule(VALIDER)} : jouer   T : les touches`, 32, OR,
            { centre: [L / 2, 676] });
   }
 
@@ -691,8 +747,39 @@ export class Jeu {
       ecrire(e, texte, 40, choisi ? OR : BLANC, { centre: [x, 502] });
     });
     ecrire(e, "(le meilleur temps est gardé)", 26, [190, 180, 210], { centre: [L / 2, 580] });
-    ecrire(e, `${majuscule(CROIX)} : choisir   ${majuscule(BOUTONS.saut)} : valider`, 30, OR,
+    ecrire(e, `${majuscule(CROIX)} : choisir   ${majuscule(VALIDER)} : valider`, 30, OR,
            { centre: [L / 2, 660] });
+  }
+
+  /** L'écran des touches : pour chaque action, la touche du joueur 1 (et de celui qui joue
+   * seul) et celle du joueur 2 ; en bas, « remettre les touches de départ ». */
+  dessiner_touches(e) {
+    ecrire(e, "Les touches", 76, ORANGE, { centre: [L / 2, 60] });
+    ecrire(e, "Choisis une action, appuie sur la barre d'espace, puis sur la nouvelle touche",
+           26, BLANC, { centre: [L / 2, 112] });
+    const colonnes = [640, 940];
+    ["Seul, ou joueur 1", "Joueur 2 (à deux)"].forEach((titre, j) => {
+      ecrire(e, titre, 30, OR, { centre: [colonnes[j], 168] });
+    });
+    const t = touches();
+    REGLABLES.forEach(([action, nom], i) => {
+      const y = 222 + i * 58;
+      ecrire(e, nom, 30, BLANC, { centre: [360, y] });
+      colonnes.forEach((x, j) => {
+        const choisi = this.reglage[0] === j && this.reglage[1] === i;
+        dessin.rect(e, choisi ? [64, 48, 96] : [30, 24, 46], [x - 120, y - 22, 240, 44], 0, 12);
+        if (choisi) dessin.rect(e, OR, [x - 120, y - 22, 240, 44], 3, 12);
+        let texte = nom_court(t[j][action][0]);
+        if (choisi && this.attente) texte = Math.floor(this.t * 2) % 2 ? "appuie…" : "";
+        ecrire(e, texte, 30, choisi ? OR : BLANC, { centre: [x, y] });
+      });
+    });
+    const choisi = this.reglage[1] === REGLABLES.length, y = 222 + REGLABLES.length * 58 + 12;
+    dessin.rect(e, choisi ? [64, 48, 96] : [30, 24, 46], [L / 2 - 220, y - 22, 440, 44], 0, 12);
+    if (choisi) dessin.rect(e, OR, [L / 2 - 220, y - 22, 440, 44], 3, 12);
+    ecrire(e, "Remettre les touches de départ", 28, choisi ? OR : BLANC, { centre: [L / 2, y] });
+    ecrire(e, `${majuscule(CROIX)} : choisir   ${majuscule(VALIDER)} : changer   Échap : retour`, 30, OR,
+           { centre: [L / 2, 676] });
   }
 
   dessiner_voyage(e) {
