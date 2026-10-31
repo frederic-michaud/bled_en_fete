@@ -3,7 +3,7 @@
 **Version web** (branche `web`) : le même jeu dans un navigateur, avec pygbag (Python en
 WebAssembly). `./construire_web.sh` copie les fichiers du jeu dans `site/` (pas dans git),
 fait aussi chaque image en PNG (si le navigateur ne lit pas les SVG) et fabrique
-`site/bled_en_fete/build/web` (index.html + archives) ; `./publier_web.sh` le publie sur `gh-pages`
+`site/bled_en_fete/build/web` (index.html + archives) ; `./publier_web.sh` le publie sur `gh-pages`, dans le dossier `ancienne-version-python-pygbag/`
 (GitHub Pages). Dans le navigateur (`outils.WEB`) : `main.py` lance la boucle (qui rend la
 main au navigateur à chaque image), simple définition, affichage par `display.set_mode`,
 tableau d'honneur gardé dans le navigateur (localStorage), pas de « quitter » ni de réglage
