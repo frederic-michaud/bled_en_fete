@@ -28,13 +28,15 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   fantôme = seulement un bonbon (on passe à travers : « Bouh ! ») ; chauve-souris = un
   saut ; toile d'araignée et chandelier = les toucher. Toucher de côté une créature
   méchante : « Bouh ! », le vampire recule. **Pas de vies ni de cœurs** (refusé).
-- Trois façons de jouer (`niveaux.MODES`, `partie.PERSONNAGES`), choisies après l'accueil,
-  puis chacun écrit son nom (clavier à l'écran, à la manette, ou au vrai clavier) :
+- Trois façons de jouer (`niveaux.MODES`, `partie.PERSONNAGES`). On choisit le mode puis
+  chacun écrit son nom (clavier à l'écran, à la manette, ou au vrai clavier) **une seule
+  fois**, au premier départ depuis l'accueil ; ensuite l'accueil les rappelle et le bouton
+  de droite permet d'en changer (`Jeu.pret`) :
   - **Seul** : le vampire.
   - **À deux** (« duo ») : le vampire et la vampirette, mêmes pouvoirs. La caméra est entre
     les deux ; on ne peut pas s'éloigner au point que l'autre sorte de l'écran (`ECART_MAX`).
   - **Parent et enfant** (« parent ») : la caméra suit le parent ; le petit vampire est
-    traîné au bout d'une laisse magique (`LAISSE`) et, s'il est coincé ou trop loin, il
+    ramené par une laisse magique élastique et discrète (`LAISSE`, `ELASTIQUE`) et, s'il est coincé ou trop loin, il
     s'envole à travers tout jusqu'au parent. Il a sinon les mêmes pouvoirs.
   À deux, la manette 1 est au joueur 1, la manette 2 au joueur 2 ; s'il en manque une, le
   clavier est partagé (flèches/P/O et ZQSD/espace/E/X). Bonbons en poche : communs.

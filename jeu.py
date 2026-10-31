@@ -59,6 +59,7 @@ class Jeu:
         self.mode = "solo"        # seul, à deux (duo) ou parent et enfant (parent)
         self.choix_mode = 0
         self.noms = ["", ""]      # le nom de chaque joueur (gardé pour la partie suivante)
+        self.pret = False         # mode et noms choisis : à l'accueil, on part tout de suite
         self.qui = 0              # le joueur qui écrit son nom
         self.curseur = [0, 0]     # la lettre choisie dans GRILLE (ligne, colonne)
         self.chrono = 0.0         # le temps passé dans les salles depuis la salle 1
@@ -245,6 +246,12 @@ class Jeu:
                     self.niveau = choix
                     self.son("clic")
             if self.titre_t > 0.5 and (entree or cmd.saut_presse):
+                if self.pret:
+                    self.partir(None, self.niveau)
+                else:
+                    self.etat = "mode"
+                    self.son("clic")
+            elif self.titre_t > 0.5 and cmd.action_presse:  # changer de mode ou de joueurs
                 self.etat = "mode"
                 self.son("clic")
             elif self.titre_t > 0.5 and cmd.coucou_presse:
@@ -347,6 +354,7 @@ class Jeu:
                 if self.qui + 1 < self.joueurs():
                     self.ecrire_nom(self.qui + 1)
                 else:
+                    self.pret = True
                     self.partir(None, self.niveau)
                 return
             elif len(t) == 1 and (t.isalpha() or t == "-") and len(nom) < NOM_MAX:
@@ -420,6 +428,10 @@ class Jeu:
         if self.ouvertes > 1:
             salle = f"<   {salle}   >"
             consigne += "   (la croix : choisir la salle)"
+        if self.pret:
+            mode = next(nom for code, nom, _ in MODES if code == self.mode)
+            ecrire(e, f"{mode} : {' et '.join(self.noms[:self.joueurs()])}   "
+                      f"({BOUTONS['action']} : changer)", 28, BLANC, centre=(L // 2, 566))
         ecrire(e, salle, 38, BLANC, centre=(L // 2, 608))
         ecrire(e, consigne, 32, OR, centre=(L // 2, 650))
         ecrire(e, f"{self.entrees.nom()}      {BOUTONS['coucou'].capitalize()} : le tableau d'honneur   "

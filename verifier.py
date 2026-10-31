@@ -127,10 +127,12 @@ def a_deux():
 
     p = pa.Partie(1, mode="parent")
     parent, enfant = p.vampires
+    depart = enfant.x
     for _ in range(60 * 6):  # le parent part à droite, l'enfant reste (ou essaie de partir à gauche)
         p.maj([presse(droite=True), presse(gauche=True)])
     d = abs(parent.x - enfant.x)
-    verifier(d < pa.LAISSE_MAX and enfant.x > 400, f"parent et enfant : la laisse traîne l'enfant (écart {d:.0f})")
+    verifier(d < pa.LAISSE + 120 and enfant.x > depart + 50,
+             f"parent et enfant : la laisse, élastique, traîne l'enfant (écart {d:.0f})")
     parent.x, parent.y = 30 * pa.T, 4 * pa.T  # le parent est tout là-haut : l'enfant s'envole
     parent.vy = 0
     for _ in range(60 * 3):
@@ -201,8 +203,11 @@ def enchainement(mode, noms):
     j.image(presse(saut=True))
     j.image(C())
     verifier(j.etat == "honneur", "après la fête : le tableau d'honneur")
-    for _ in range(5):
+    j.image(presse(saut=True))
+    for _ in range(200):
         j.image(C())
+    j.image(presse(saut=True))
+    verifier(j.etat == "voyage" and j.mode == mode, "accueil : le mode est gardé, on repart tout de suite")
     temps.sort()
     moyen, pire = sum(temps) / len(temps) * 1000, temps[int(len(temps) * 0.99)] * 1000
     verifier(pire < 16, f"vitesse : {moyen:.1f} ms par image en moyenne, {pire:.1f} ms au pire (99 %)")

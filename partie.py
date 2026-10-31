@@ -9,7 +9,7 @@ import pygame
 import manettes
 from niveaux import AU_SOL, BOUTONS, GENRES, NIVEAUX, PAS_DE_BONBON, RANGS
 from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ROSE, T, TAILLES, ZOOM, _z, anime,
-                    dessin, ecrire, envelopper, police, poser)
+                    dessin, ecrire, envelopper, melange, police, poser)
 
 GRAVITE = 2200.0
 SAUT = 760.0                # environ 3 tuiles de haut
@@ -34,9 +34,11 @@ PLAFOND = 2                             # rangées du haut : la frise (rien ne s
 HAUT_FRISE = PLAFOND * T
 # À deux : on ne peut pas s'éloigner au point que l'autre sorte de l'écran.
 ECART_MAX = L - 200
-# Parent et enfant : la laisse magique. Plus loin que LAISSE, l'enfant est traîné vers le
-# parent ; s'il n'arrive pas à suivre (TIRE_MAX s) ou s'il est trop loin, il s'envole vers lui.
-LAISSE, LAISSE_MAX, TIRE_MAX, VOL_ENFANT = 260.0, 520.0, 1.0, 900.0
+# Parent et enfant : la laisse magique, élastique. Plus loin que LAISSE, elle s'étire et
+# ramène l'enfant d'autant plus fort qu'elle est tirée (ELASTIQUE) ; s'il n'arrive pas à
+# suivre (TIRE_MAX s) ou s'il est trop loin, il s'envole vers le parent.
+LAISSE, LAISSE_MAX, TIRE_MAX, VOL_ENFANT = 380.0, 620.0, 1.2, 900.0
+ELASTIQUE, RAPPEL_MAX = 3.5, 500.0      # vitesse de rappel par pixel d'étirement, et au plus
 # les personnages de chaque façon de jouer : (dessin, taille de leur corps)
 PERSONNAGES = {"solo": [("vampire", (26, 52))],
                "duo": [("vampire", (26, 52)), ("vampirette", (26, 52))],
@@ -753,13 +755,14 @@ class Partie:
         if d <= LAISSE:
             enfant.tire = 0.0
             return
-        if d > LAISSE + 40:  # il n'arrive pas à suivre (un mur, une plateforme…)
+        if d > LAISSE + 140:  # il n'arrive pas à suivre (un mur, une plateforme…)
             enfant.tire += DT
         if d > LAISSE_MAX or enfant.tire > TIRE_MAX:
             enfant.vole = True
             self.son("magie")
         elif abs(dx) > 1:
-            enfant.bouger_x(math.copysign(min(abs(dx), d - LAISSE, 420 * DT), dx))
+            rappel = min(RAPPEL_MAX, ELASTIQUE * (d - LAISSE)) * DT
+            enfant.bouger_x(math.copysign(min(abs(dx), rappel), dx))
 
     def voler(self, v):
         """L'enfant s'envole vers le parent, à travers tout, et se pose à côté de lui."""
@@ -882,7 +885,7 @@ class Partie:
             for v in self.vampires:
                 e.blit(halo, halo.get_rect(center=(_z(v.x + v.W / 2 - cx), _z(v.y + v.H / 2))),
                        special_flags=pygame.BLEND_RGB_ADD)
-            self.dessiner_joueurs(e, cx)  # par-dessus la lumière : ils restent bien nets
+            self.dessiner_joueurs(e, cx, laisse=False)  # par-dessus la lumière : bien nets
         if f > 0.3:
             k = (f - 0.3) / 0.7
             e.fill((round(28 * k), round(14 * k), 0), special_flags=pygame.BLEND_RGB_ADD)
@@ -910,20 +913,22 @@ class Partie:
                 suite = f"{BOUTONS['saut'].capitalize()} : {suite}"
                 ecrire(e, suite, 36, BLANC, centre=(L // 2, 330))
 
-    def dessiner_joueurs(self, e, cx):
-        """Les personnages, et la laisse magique entre le parent et l'enfant."""
-        if self.mode == "parent":
+    def dessiner_joueurs(self, e, cx, laisse=True):
+        """Les personnages, et la laisse magique entre le parent et l'enfant (fine et
+        discrète : on la dessine sous la lumière, qui l'assombrit dans les salles sombres)."""
+        if self.mode == "parent" and laisse:
             parent, enfant = self.vampires
             a = (parent.x + parent.W / 2 + parent.dir * 10 - cx, parent.y + 30)
             b = (enfant.x + enfant.W / 2 - cx, enfant.y + 14)
             d = math.hypot(b[0] - a[0], b[1] - a[1])
-            creux = max(4.0, (LAISSE - d) * 0.4)  # elle pend quand elle n'est pas tendue
+            # elle pend quand elle n'est pas tendue, et ondule un peu, comme un élastique
+            creux = max(3.0, (LAISSE - d) * 0.35) * (1 + 0.15 * math.sin(self.t * 4))
             milieu = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + creux)
             points = [bezier_point(a, milieu, b, k / 12) for k in range(13)]
-            tendue = d > LAISSE - 10
-            for k in range(12):
-                couleur = OR if tendue else FESTIF[(k + int(self.t * 8)) % 5]
-                dessin.line(e, couleur, points[k], points[k + 1], 3)
+            tendue = min(1.0, max(0.0, (d - LAISSE) / 150))
+            couleur = melange((150, 120, 200), (235, 205, 130), tendue)
+            for k in range(0, 12, 2):  # en pointillés
+                dessin.line(e, couleur, points[k], points[k + 1], 1)
         for v in reversed(self.vampires):  # le premier joueur devant
             v.dessiner(e, cx)
 
