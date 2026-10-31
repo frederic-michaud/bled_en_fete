@@ -117,7 +117,8 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   Logitech Precision est invisible) : toujours importer `manettes` avant `pygame`.
   Seul, toutes les manettes branchées pilotent le vampire ; le clavier marche aussi.
   `manettes.json` (clé = GUID) garde les réglages faits avec la touche C ; sinon les
-  boutons sont devinés d'après leur place. Manettes de l'utilisateur : « PS3/USB Corded
+  boutons sont devinés d'après leur place. Pour se déplacer, la croix et le joystick marchent
+  toujours tous les deux (`manettes.fusionner`), même après un réglage. Manettes de l'utilisateur : « PS3/USB Corded
   Gamepad » (Logitech ChillStream), « Logitech Precision Gamepad », « 8BitDo Ultimate 2C ».
 - Vitesse : rester sous 16 ms par image (`verifier.py` le mesure). Ce qui coûte : les
   grandes surfaces transparentes. On évite de dessiner ce qui est caché.
