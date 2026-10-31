@@ -28,7 +28,7 @@ from sons import creer_sons
 
 TITRE = "Vampire en fête"
 # le clavier à l'écran pour écrire son nom à la manette
-GRILLE = [list("ABCDEFGHIJ"), list("KLMNOPQRST"), list("UVWXYZ-"), ["Effacer", "C'est fini !"]]
+GRILLE = [list("ABCDEFGHIJ"), list("KLMNOPQRST"), list("UVWXYZ-"), ["Effacer", "En route !"]]
 NOM_MAX = 10
 QUI = {"solo": ("Ton nom",), "duo": ("Joueur 1 : ton nom", "Joueur 2 : ton nom"),
        "parent": ("Le parent : ton nom", "L'enfant : ton nom")}
@@ -319,7 +319,7 @@ class Jeu:
         self.dessiner()
 
     def ecrire_nom(self, qui):
-        """Le joueur qui écrit son nom ; s'il en a déjà un, on se place sur « C'est fini »."""
+        """Le joueur qui écrit son nom ; s'il en a déjà un, on se place sur « En route »."""
         self.etat, self.qui = "nom", qui
         self.curseur = [3, 1] if self.noms[qui] else [0, 0]
         self.son("clic")
@@ -340,14 +340,14 @@ class Jeu:
         if cmd.saut_presse:
             tape.append(GRILLE[ligne][col])
         if entree:
-            tape.append("C'est fini !")
+            tape.append("En route !")
         if cmd.pause_presse:
             tape.append("Effacer")
         nom = self.noms[self.qui]
         for t in tape:
             if t == "Effacer":
                 nom = nom[:-1]
-            elif t == "C'est fini !":
+            elif t == "En route !":
                 if not nom.strip("-"):
                     self.son("vide")  # il faut au moins une lettre
                     continue

@@ -48,30 +48,44 @@ PERSONNAGES = {"solo": [("vampire", (26, 52))],
 # Décor
 # --------------------------------------------------------------------------
 
-_voiles = []
+_voiles = {}
 RAYON_HALO = 200
 
 
 def voiles():
-    """La nuit (un voile sombre), le bord de l'écran assombri et le halo de lumière autour
-    du vampire, faits une fois pour toutes."""
+    """Le bord de l'écran assombri (en petit) et le halo de lumière autour du vampire,
+    faits une fois pour toutes."""
     if not _voiles:
-        nuit = pygame.Surface((L * ZOOM, H * ZOOM))
-        nuit.fill((6, 4, 20))
-        petit = pygame.Surface((160, 90), pygame.SRCALPHA)
+        bord = pygame.Surface((160, 90), pygame.SRCALPHA)
         for y in range(90):
             for x in range(160):
                 d = math.hypot((x - 80) / 80, (y - 45) / 45)
                 a = max(0.0, min(1.0, (d - 0.45) / 0.6))
-                petit.set_at((x, y), (0, 0, 0, round(190 * a * a)))
+                bord.set_at((x, y), (0, 0, 0, round(190 * a * a)))
         halo = pygame.Surface((64, 64))
         for y in range(64):
             for x in range(64):
                 a = max(0.0, 1 - math.hypot(x - 31.5, y - 31.5) / 32) ** 2
                 halo.set_at((x, y), (round(46 * a), round(38 * a), round(56 * a)))
-        _voiles.extend((nuit, pygame.transform.smoothscale(petit, (L * ZOOM, H * ZOOM)),
-                        pygame.transform.smoothscale(halo, (_z(RAYON_HALO * 2), _z(RAYON_HALO * 2)))))
+        _voiles.update(bord=bord, ombre=(None, None),
+                       halo=pygame.transform.smoothscale(halo, (_z(RAYON_HALO * 2), _z(RAYON_HALO * 2))))
     return _voiles
+
+
+def ombre(f):
+    """L'ombre de la nuit quand la salle est en fête à f : une seule image qu'on multiplie
+    avec l'écran (tout plus sombre, encore plus sur les bords). C'est bien plus rapide que
+    deux voiles transparents ; on ne la refait que quand f change."""
+    v = voiles()
+    niveau = round(f * 100)
+    if v["ombre"][0] != niveau:
+        k = 90 / 255 * (1 - f)  # la nuit : un voile bleu nuit de cette opacité
+        petit = pygame.Surface((160, 90))
+        petit.fill((round(255 * (1 - k)), round(255 * (1 - k)), round(255 * (1 - k * 0.85))))
+        v["bord"].set_alpha(round(255 * 0.8 * (1 - f)))
+        petit.blit(v["bord"], (0, 0))
+        v["ombre"] = (niveau, pygame.transform.smoothscale(petit, (L * ZOOM, H * ZOOM)))
+    return v["ombre"][1]
 
 
 def creer_tuiles():
@@ -874,14 +888,9 @@ class Partie:
         for b in self.lances:
             b.dessiner(e, cx)
         # la lumière : sombre au début, de plus en plus claire et chaude avec la fête
-        nuit, vignette, halo = voiles()
-        if f < 0.99:
-            nuit.set_alpha(round(90 * (1 - f)))
-            e.blit(nuit, (0, 0))
-        if f < 0.99:
-            vignette.set_alpha(round(255 * 0.8 * (1 - f)))
-            e.blit(vignette, (0, 0))
-        if f < 0.99:  # chacun porte sa lumière : on les voit toujours bien
+        if f < 0.99:  # la nuit, plus sombre sur les bords
+            e.blit(ombre(f), (0, 0), special_flags=pygame.BLEND_RGB_MULT)
+            halo = voiles()["halo"]
             for v in self.vampires:
                 e.blit(halo, halo.get_rect(center=(_z(v.x + v.W / 2 - cx), _z(v.y + v.H / 2))),
                        special_flags=pygame.BLEND_RGB_ADD)
