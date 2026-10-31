@@ -2,14 +2,22 @@
 // clavier). C'est ici qu'on change ou qu'on ajoute une salle (et alors une fenêtre dans
 // dehors.FENETRES).
 
-// Dans le navigateur, on joue au clavier : on nomme les touches (voir manettes.CLAVIER_DUO).
-export const WEB = true;
-export const BOUTONS = { saut: "barre d'espace", action: "touche X", coucou: "touche C", pause: "touche P" };
-export const CROIX = "les flèches";
+import { libelle } from "./touches.js";
 
-/** « le bouton du bas », « la barre d'espace », « la touche X ». */
+// Dans le navigateur, on joue au clavier : on nomme les touches. Dans une salle, ce sont
+// celles du joueur 1, réglables (voir touches.js) ; dans les menus, elles sont fixes :
+// les flèches pour choisir, la barre d'espace (ou Entrée) pour valider.
+export const WEB = true;
+export const BOUTONS = {
+  get saut() { return libelle(0, "saut"); }, get action() { return libelle(0, "action"); },
+  get coucou() { return libelle(0, "coucou"); }, get pause() { return libelle(0, "pause"); },
+};
+export const CROIX = "les flèches";
+export const VALIDER = "barre d'espace";
+
+/** « le bouton du bas », « la barre d'espace », « la touche X », « la flèche du bas ». */
 export function le(nom) {
-  return (["barre", "touche"].includes(nom.split(" ")[0]) ? "la " : "le ") + nom;
+  return (["barre", "touche", "flèche"].includes(nom.split(" ")[0]) ? "la " : "le ") + nom;
 }
 
 /** Comme str.capitalize() de Python, mais sans mettre le reste en minuscules
@@ -51,11 +59,12 @@ export const NIVEAUX = [
       [13, 28, "f"], [14, 31, "-----"], [11, 36, "-----"], [8, 41, "t"], [10, 37, "o"],
       [15, 34, "#"], [16, 34, "#"], [16, 41, "s"], [16, 45, "o"],
     ],
-    aides: [[1, `Va à côté de la courge, puis ${BOUTONS.coucou} : le couteau !`],
+    // {saut}, {action}, {coucou} : remplacés par les touches des joueurs (voir partie.js)
+    aides: [[1, "Va à côté de la courge, puis {coucou} : le couteau !"],
       [11, "Touche le néon pour l'allumer"],
-      [17, `Saute sur la chauve-souris (${BOUTONS.saut}) !`],
-      [22, `Ramasse le bonbon, puis ${BOUTONS.action} pour le lancer`],
-      [25, `Le fantôme n'a peur que des bonbons : ${BOUTONS.action} !`],
+      [17, "Saute sur la chauve-souris ({saut}) !"],
+      [22, "Ramasse le bonbon, puis {action} pour le lancer"],
+      [25, "Le fantôme n'a peur que des bonbons : {action} !"],
       [31, "Grimpe et touche la toile d'araignée"],
       [38, "Le squelette : saute-lui dessus deux fois ! Les bonbons ne marchent pas"]],
   },
@@ -133,11 +142,11 @@ export const NIVEAUX = [
 ];
 
 // Ce qui se cache au Bled : [image effrayante, image de fête, règle, message].
-// Règles : « couteau » = se mettre à côté et sortir le couteau (touche C) ;
+// Règles : « couteau » = se mettre à côté et sortir le couteau ;
 // « touche » = il suffit de la toucher ; « mechant » = lui sauter dessus, mais le
 // toucher de côté fait « Bouh ! » (le squelette : deux fois, il tombe d'abord en tas
 // d'os) ; « bonbon » = seul un bonbon lancé marche, on passe à travers et ça fait
-// « Bouh ! ». Un bonbon lancé (touche X) transforme tout sauf PAS_DE_BONBON.
+// « Bouh ! ». Un bonbon lancé transforme tout sauf PAS_DE_BONBON.
 export const GENRES = {
   c: ["courge", "soupe", "couteau", "Miam, de la soupe !"],
   s: ["squelette", "squelette_danse", "mechant", "Ça danse !"],
