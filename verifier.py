@@ -4,18 +4,22 @@
 - le corbeau est toujours attrapable : sous chaque décoration il y a un endroit d'où un
   saut touche le corbeau quand il s'y pose ;
 - les règles de chaque créature marchent (couteau, deux sauts, bonbons…) ;
-- on enchaîne accueil, voyage, salles et grande fête finale ;
+- à deux, personne ne sort de l'écran ; parent et enfant, la laisse ramène l'enfant ;
+- on enchaîne accueil, mode, nom, voyage, salles, grande fête et tableau d'honneur ;
 - le jeu reste assez rapide (moins de 16 ms par image pour 60 images par seconde).
 """
 import os
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 import manettes  # noqa: E402  (avant pygame)
 import jeu  # noqa: E402
+import palmares  # noqa: E402
 import partie as pa  # noqa: E402
 from niveaux import NIVEAUX, RANGS  # noqa: E402
 from outils import T  # noqa: E402
@@ -108,7 +112,34 @@ def regles():
     verifier(cb.fetee, "corbeau : le toucher (même par en dessous) le chasse")
 
 
-def enchainement():
+def a_deux():
+    p = pa.Partie(0, mode="duo")
+    v1, v2 = p.vampires
+    for _ in range(60 * 8):  # le joueur 1 file à droite, le joueur 2 ne bouge pas
+        p.maj([presse(droite=True), C()])
+    ecran = [v.x - p.camera for v in p.vampires]
+    verifier(v1.x - v2.x <= pa.ECART_MAX + 1 and all(0 <= x <= jeu.L - v1.W for x in ecran),
+             f"à deux : on ne peut pas laisser l'autre hors de l'écran (écart {v1.x - v2.x:.0f})")
+    avant = v2.x
+    for _ in range(60 * 3):
+        p.maj([C(), presse(droite=True)])
+    verifier(v2.x > avant + 400, "à deux : l'autre peut toujours avancer")
+
+    p = pa.Partie(1, mode="parent")
+    parent, enfant = p.vampires
+    for _ in range(60 * 6):  # le parent part à droite, l'enfant reste (ou essaie de partir à gauche)
+        p.maj([presse(droite=True), presse(gauche=True)])
+    d = abs(parent.x - enfant.x)
+    verifier(d < pa.LAISSE_MAX and enfant.x > 400, f"parent et enfant : la laisse traîne l'enfant (écart {d:.0f})")
+    parent.x, parent.y = 30 * pa.T, 4 * pa.T  # le parent est tout là-haut : l'enfant s'envole
+    parent.vy = 0
+    for _ in range(60 * 3):
+        p.maj([C(), C()])
+    d = abs(parent.x - enfant.x) + abs(parent.y + parent.H - enfant.y - enfant.H)
+    verifier(d < 60 and not enfant.vole, f"parent et enfant : l'enfant trop loin s'envole vers le parent ({d:.0f})")
+
+
+def enchainement(mode, noms):
     j = jeu.Jeu()
     for _ in range(200):
         j.image(C())
@@ -116,9 +147,33 @@ def enchainement():
     j.image(presse(gauche=True))
     verifier(j.niveau == 0, "accueil : les salles pas encore atteintes sont fermées")
     j.image(presse(saut=True))
+    while jeu.MODES[j.choix_mode][0] != mode:
+        j.image(presse(droite=True))
+        j.image(C())
+    j.image(presse(saut=True))
+    verifier(j.etat == "nom", f"mode « {mode} » choisi : on écrit son nom")
+    for nom in noms:
+        for lettre in nom:  # à la manette, sur le clavier de l'écran
+            ligne = next(i for i, l in enumerate(jeu.GRILLE) if lettre.upper() in l)
+            col = jeu.GRILLE[ligne].index(lettre.upper())
+            while j.curseur[0] != ligne:
+                j.image(presse(bas=True))
+                j.image(C())
+            while j.curseur[1] != col:
+                j.image(presse(droite=True))
+                j.image(C())
+            j.image(presse(saut=True))
+            j.image(C())
+        while j.curseur != [3, 1]:
+            j.image(presse(bas=True) if j.curseur[0] != 3 else presse(droite=True))
+            j.image(C())
+        j.image(presse(saut=True))
+        j.image(C())
+    verifier(j.noms[:len(noms)] == noms and j.etat == "voyage", f"noms écrits : {j.noms[:len(noms)]}")
     for _ in range(200):
         j.image(C())
-    verifier(j.etat == "jeu" and j.partie.i_niveau == 0, "accueil puis voyage jusqu'à la salle 1")
+    verifier(j.etat == "jeu" and j.partie.i_niveau == 0 and len(j.partie.vampires) == len(noms),
+             "accueil puis voyage jusqu'à la salle 1")
     temps = []
     for i in range(len(NIVEAUX)):
         for _ in range(30):
@@ -140,6 +195,14 @@ def enchainement():
         obtenu = (j.etat, j.partie.i_niveau if j.etat == "jeu" else None)
         verifier(obtenu == attendu, f"salle {i + 1} finie : on arrive à {attendu}")
     verifier(j.ouvertes == len(NIVEAUX), "toutes les salles finies : on peut toutes les choisir")
+    r = j.reussite
+    verifier(r is not None and r["noms"] == noms and r in palmares.classement(mode) and r["temps"] > 1,
+             f"la réussite est au tableau d'honneur : {r}")
+    j.image(presse(saut=True))
+    j.image(C())
+    verifier(j.etat == "honneur", "après la fête : le tableau d'honneur")
+    for _ in range(5):
+        j.image(C())
     temps.sort()
     moyen, pire = sum(temps) / len(temps) * 1000, temps[int(len(temps) * 0.99)] * 1000
     verifier(pire < 16, f"vitesse : {moyen:.1f} ms par image en moyenne, {pire:.1f} ms au pire (99 %)")
@@ -150,7 +213,11 @@ if __name__ == "__main__":
     corbeau_attrapable()
     print("Les règles des créatures")
     regles()
-    print("De l'accueil à la grande fête")
-    enchainement()
+    print("À deux, parent et enfant")
+    a_deux()
+    palmares.FICHIER = Path(tempfile.mkdtemp()) / "palmares.json"  # pas le vrai tableau
+    for mode, noms in (("solo", ["Lou"]), ("duo", ["Lea", "Tom"]), ("parent", ["Papa", "Zoe"])):
+        print(f"De l'accueil à la grande fête ({mode})")
+        enchainement(mode, noms)
     print("\nTout va bien !" if not erreurs else f"\n{len(erreurs)} problème(s).")
     sys.exit(1 if erreurs else 0)

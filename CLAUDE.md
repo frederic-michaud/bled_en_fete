@@ -1,4 +1,4 @@
-# Vampire en fête — jeu d'Halloween, un joueur à la manette
+# Vampire en fête — jeu d'Halloween à la manette, seul ou à deux
 
 Un vampire redécore son château lugubre pour Halloween. Il traverse 4 salles et doit
 transformer chaque créature ou objet effrayant en sa version fête ; plus la salle se
@@ -28,6 +28,20 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   fantôme = seulement un bonbon (on passe à travers : « Bouh ! ») ; chauve-souris = un
   saut ; toile d'araignée et chandelier = les toucher. Toucher de côté une créature
   méchante : « Bouh ! », le vampire recule. **Pas de vies ni de cœurs** (refusé).
+- Trois façons de jouer (`niveaux.MODES`, `partie.PERSONNAGES`), choisies après l'accueil,
+  puis chacun écrit son nom (clavier à l'écran, à la manette, ou au vrai clavier) :
+  - **Seul** : le vampire.
+  - **À deux** (« duo ») : le vampire et la vampirette, mêmes pouvoirs. La caméra est entre
+    les deux ; on ne peut pas s'éloigner au point que l'autre sorte de l'écran (`ECART_MAX`).
+  - **Parent et enfant** (« parent ») : la caméra suit le parent ; le petit vampire est
+    traîné au bout d'une laisse magique (`LAISSE`) et, s'il est coincé ou trop loin, il
+    s'envole à travers tout jusqu'au parent. Il a sinon les mêmes pouvoirs.
+  À deux, la manette 1 est au joueur 1, la manette 2 au joueur 2 ; s'il en manque une, le
+  clavier est partagé (flèches/P/O et ZQSD/espace/E/X). Bonbons en poche : communs.
+- Tableau d'honneur (`palmares.py`, fichier `palmares.json`, pas dans git) : ceux qui ont
+  fini les 4 salles en partant de la salle 1 sans repasser par l'accueil, avec leur temps
+  total (temps dans les salles, sans pauses ni voyages), classés par façon de jouer. Le
+  chrono s'affiche en haut à droite de la frise. À l'accueil, bouton du haut : le tableau.
 - À l'accueil, la croix ne choisit que parmi les salles déjà atteintes (`Jeu.ouvertes`,
   oublié quand on quitte le jeu) : la salle suivante s'ouvre quand on finit une salle.
 - Bonbons : 3 en poche au départ (5 au plus) ; on en ramasse dans la salle, ils
@@ -42,11 +56,14 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
 
 ## Fichiers
 - `jeu.py` : la classe `Jeu` (fenêtre, boucle à 60 images/s, écrans). États :
-  « titre » (accueil : le vampire arrive au château), « voyage » (on recule jusqu'à la
+  « titre » (accueil : le vampire arrive au château), « mode », « nom » (clavier à l'écran,
+  `GRILLE`), « honneur » (tableau d'honneur), « voyage » (on recule jusqu'à la
   fenêtre de la salle finie, qui continue sa fête ; le vampire vole à la suivante ; on
   plonge dedans), « jeu », « fin » (château tout en fête, feux d'artifice). Les salles
   finies restent vivantes (`Jeu.salles`) et s'affichent dans leur fenêtre.
-- `partie.py` : une salle. `Partie` (grille, choses, bonbons, corbeau, dessin avec la
+- `partie.py` : une salle. `Partie(i, son, mode)` : `vampires` (1 ou 2 ; `vampire` = le
+  premier, que suivent la caméra et le corbeau), grille, choses, bonbons, corbeau, laisse,
+  dessin avec la
   lumière qui change avec la fête), `Vampire`, `Chose` (créature ou objet),
   `BonbonLance`, `Corbeau`, et le décor (mur du fond, frise, tuiles, voiles de nuit).
   Les réglages du jeu (saut, vitesses, durées) sont en haut du fichier.
@@ -63,7 +80,9 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
 - `musique.py` : 4 ambiances (lugubre, mystère, gai, fête), même tempo et même longueur,
   qui jouent toutes en même temps ; on passe de l'une à l'autre par fondu.
 - `sons.py` : les bruitages (fabriqués, pas de fichiers son).
-- `manettes.py` + `manettes.json` : voir plus bas. `verifier.py` : les vérifications.
+- `palmares.py` : le tableau d'honneur.
+- `manettes.py` + `manettes.json` : voir plus bas. `Entrees.lire(joueurs)` rend une
+  `Commande` par joueur ; `ensemble()` les fusionne pour les menus. `verifier.py` : les vérifications.
 
 ## Technique à garder
 - Écran pensé en 1280×720, dessiné `ZOOM`=2 fois plus fin (Retina) sur une Surface,
@@ -71,7 +90,7 @@ on dit « la croix » et « le bouton du bas / de droite / du haut / de gauche �
   `Texture(streaming=True)`. Si l'écran n'existe pas, le jeu tourne quand même.
 - Manettes : `os.environ["SDL_JOYSTICK_MFI"]="0"` **avant** `import pygame` (sinon la
   Logitech Precision est invisible) : toujours importer `manettes` avant `pygame`.
-  Toutes les manettes branchées pilotent le vampire, le clavier marche aussi.
+  Seul, toutes les manettes branchées pilotent le vampire ; le clavier marche aussi.
   `manettes.json` (clé = GUID) garde les réglages faits avec la touche C ; sinon les
   boutons sont devinés d'après leur place. Manettes de l'utilisateur : « PS3/USB Corded
   Gamepad » (Logitech ChillStream), « Logitech Precision Gamepad », « 8BitDo Ultimate 2C ».

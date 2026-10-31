@@ -1,5 +1,6 @@
-"""Une salle du château : le vampire, les créatures à transformer, les bonbons, le
-corbeau grognon, et le dessin de la salle (avec sa lumière qui change avec la fête)."""
+"""Une salle du château : le vampire (ou les deux personnages, à deux), les créatures à
+transformer, les bonbons, le corbeau grognon, et le dessin de la salle (avec sa lumière
+qui change avec la fête)."""
 import math
 import random
 
@@ -31,6 +32,15 @@ DUREE_COUPE = 0.7                       # couper la courge en morceaux
 COUPS = (0.5, 0.3, 0.1)                 # instants des coups de couteau (temps restant)
 PLAFOND = 2                             # rangées du haut : la frise (rien ne s'y passe)
 HAUT_FRISE = PLAFOND * T
+# À deux : on ne peut pas s'éloigner au point que l'autre sorte de l'écran.
+ECART_MAX = L - 200
+# Parent et enfant : la laisse magique. Plus loin que LAISSE, l'enfant est traîné vers le
+# parent ; s'il n'arrive pas à suivre (TIRE_MAX s) ou s'il est trop loin, il s'envole vers lui.
+LAISSE, LAISSE_MAX, TIRE_MAX, VOL_ENFANT = 260.0, 520.0, 1.0, 900.0
+# les personnages de chaque façon de jouer : (dessin, taille de leur corps)
+PERSONNAGES = {"solo": [("vampire", (26, 52))],
+               "duo": [("vampire", (26, 52)), ("vampirette", (26, 52))],
+               "parent": [("vampire", (26, 52)), ("petit", (22, 42))]}
 
 # --------------------------------------------------------------------------
 # Décor
@@ -297,10 +307,11 @@ class Chose:
 
 
 class Vampire:
-    W, H = 26, 52
+    """Un personnage du joueur (le vampire, la vampirette ou le petit vampire)."""
 
-    def __init__(self, partie, x, bas):
-        self.p = partie
+    def __init__(self, partie, x, bas, dessin="vampire", taille=(26, 52)):
+        self.p, self.dessin = partie, dessin
+        self.W, self.H = taille
         self.x, self.y = x - self.W / 2, bas - self.H
         self.vx = self.vy = 0.0
         self.au_sol = False
@@ -310,6 +321,9 @@ class Vampire:
         self.pas = 0.0
         self.invincible = self.recul = self.recharge = 0.0
         self.coupe, self.coupe_cible = 0.0, None   # en train de couper une courge
+        self.courge_proche = None  # courge juste à côté : il peut sortir son couteau
+        self.bas_avant = 0.0       # le bas de son corps à l'image d'avant
+        self.vole, self.tire = False, 0.0          # l'enfant ramené par la laisse
 
     def rect(self):
         return pygame.FRect(self.x, self.y, self.W, self.H)
@@ -381,21 +395,22 @@ class Vampire:
         self.pas = self.pas + abs(self.vx) * DT / 40 if self.au_sol else 0.0
         if cmd.action_presse and self.recharge <= 0:
             self.recharge = RECHARGE_BONBON
-            p.lancer_bonbon()
+            p.lancer_bonbon(self)
 
     def dessiner(self, surf, cx):
         if self.invincible > 0 and int(self.invincible * 10) % 2:
             return  # il clignote
-        if not self.au_sol:
-            nom = "vampire_saut"
+        d = self.dessin
+        if not self.au_sol or self.vole:
+            nom = d + "_saut@0"
         elif abs(self.vx) > 20:
-            nom = anime("vampire_marche", self.pas / 2)  # un cycle = deux pas
+            nom = anime(d + "_marche", self.pas / 2)  # un cycle = deux pas
         else:
-            nom = anime("vampire", self.p.t)
+            nom = anime(d, self.p.t)
         # le corps n'est pas au milieu de l'image (la cape flotte derrière lui)
         x = self.x + self.W / 2 - cx - self.dir * 3
-        poser(surf, nom, x, self.y + self.H - 32, self.dir < 0)
-        if self.coupe > 0 or self.p.courge_proche:  # le couteau dégainé
+        poser(surf, nom, x, self.y + self.H - TAILLES[d][1] / 2, self.dir < 0)
+        if self.coupe > 0 or self.courge_proche:  # le couteau dégainé
             u = 1 - self.coupe / DUREE_COUPE if self.coupe > 0 else 0.0
             angle = 60 if self.coupe <= 0 else -30 + 90 * abs(math.cos(u * 3 * math.pi))
             poser(surf, "couteau@0", x + self.dir * 20, self.y + 26, self.dir < 0, angle * self.dir)
@@ -535,9 +550,16 @@ class Corbeau:
             ecrire(surf, "Croâ", 22, BLANC, centre=(bord - pointe * 40, yy))
 
 
+def bezier_point(a, m, b, u):
+    """Le point u (de 0 à 1) de la courbe qui va de a à b en passant près de m."""
+    return tuple((1 - u) ** 2 * a[i] + 2 * u * (1 - u) * m[i] + u * u * b[i] for i in range(2))
+
+
 class Partie:
-    def __init__(self, i_niveau=0, son=lambda nom: None):
-        self.son = son
+    def __init__(self, i_niveau=0, son=lambda nom: None, mode="solo"):
+        """mode : « solo », « duo » (deux joueurs pareils) ou « parent » (le parent mène,
+        l'enfant suit au bout de sa laisse magique)."""
+        self.son, self.mode = son, mode
         self.i_niveau, self.niveau = i_niveau, NIVEAUX[i_niveau]
         self.cols = COLS = self.niveau["cols"]
         self.grille = [[" "] * COLS for _ in range(RANGS)]
@@ -552,11 +574,14 @@ class Partie:
                 if lettre in "#-":
                     self.grille[r][c + k] = lettre
                 elif lettre == "V":
-                    self.vampire = Vampire(self, x, (r + 1) * T)
+                    depart = x, (r + 1) * T
                 elif lettre == "o":
                     self.bonbons.append([x, y, 0.0])  # x, y, temps avant de repousser
                 else:
                     self.choses.append(Chose(self, lettre, x, (r + 1) * T if lettre in AU_SOL else y))
+        self.vampires = [Vampire(self, depart[0] + k * 44, depart[1], nom, taille)
+                         for k, (nom, taille) in enumerate(PERSONNAGES[mode])]
+        self.vampire = self.vampires[0]   # celui que suivent la caméra, le corbeau, les conseils
         self.lances, self.particules, self.messages = [], [], []
         self.notes = []           # notes de musique : x, y, décalage, vie, couleur
         self.poche = self.niveau["poche"]   # bonbons à lancer
@@ -564,7 +589,6 @@ class Partie:
         corbeau = self.niveau["corbeau"]
         self.prochain_corbeau = corbeau[0] if corbeau else math.inf
         self.alerte = 0.0         # « Le corbeau grognon arrive ! » la première fois
-        self.courge_proche = None  # courge à côté du vampire : il peut sortir son couteau
         self.flash = 0.0           # le cadre des bonbons clignote en rouge (le corbeau a défait)
         self.camera = 0.0
         self.fete_vue = 0.0       # avance doucement vers la vraie proportion de fête
@@ -603,8 +627,8 @@ class Partie:
         if all(m[0] != texte for m in self.messages):  # pas deux fois le même à la fois
             self.messages.append([texte, x, y, 1.6])
 
-    def lancer_bonbon(self):
-        v = self.vampire
+    def lancer_bonbon(self, v=None):
+        v = v or self.vampire
         x, y = v.x + v.W / 2 + v.dir * 20, v.y + 22
         if self.poche <= 0:
             self.dire("Plus de bonbons ! Ramasses-en", x, v.y - 20)
@@ -618,66 +642,27 @@ class Partie:
         self.lances.append(BonbonLance(self, x, y, v.dir, cible))
         self.son("sort")
 
-    def maj(self, cmd):
+    def maj(self, cmds):
+        """cmds : une Commande par joueur (ou une seule)."""
         self.t += DT
-        v = self.vampire
-        bas_avant = v.y + v.H
-        if v.coupe > 0:  # il coupe la courge : il ne bouge plus
-            avant, v.coupe = v.coupe, v.coupe - DT
-            ch = v.coupe_cible
-            if any(v.coupe <= k < avant for k in COUPS):
-                self.son("tchac")
-                for _ in range(8):
-                    self.particules.append([ch.x, ch.y, random.uniform(-160, 160),
-                                            random.uniform(-260, -80), 0.6, ORANGE])
-            if v.coupe <= 0:
-                ch.transformer()
-            v.maj(manettes.Commande())
-        else:
-            if cmd.coucou_presse and self.courge_proche:  # on est prêt : on coupe
-                v.coupe, v.coupe_cible = DUREE_COUPE, self.courge_proche
-                v.dir = 1 if self.courge_proche.x > v.x + v.W / 2 else -1
-                self.son("couteau")
-            v.maj(cmd)
-        self.courge_proche = None
-        if v.au_sol and v.coupe <= 0:
-            for ch in self.choses:
-                if (ch.genre == "c" and not ch.fetee and abs(ch.x - v.x - v.W / 2) < 60
-                        and abs(ch.y + ch.h / 2 - v.y - v.H) < 8):
-                    self.courge_proche = ch
-        r = v.rect()
+        if isinstance(cmds, manettes.Commande):
+            cmds = [cmds]
+        cmds = list(cmds) + [manettes.Commande()] * (len(self.vampires) - len(cmds))
+        for v, cmd in zip(self.vampires, cmds):
+            self.bouger(v, cmd)
+        if self.mode == "parent":
+            self.laisse()
         for ch in self.choses:
             ch.maj()
-            if ch.fetee or not r.colliderect(ch.rect()):
-                continue
-            dessus = v.vy > 0 and bas_avant <= ch.rect().top + 12  # on lui retombe dessus
-            if ch.regle == "touche":
-                ch.transformer()
-            elif dessus and ch.regle not in ("bonbon", "couteau"):
-                if ch.genre == "s" and ch.tas <= 0:
-                    ch.effondrer()
-                else:
-                    ch.transformer()
-                v.rebondir(cmd)
-            elif ch.regle in ("mechant", "bonbon") and ch.tas <= 0 and v.invincible <= 0:
-                v.faire_peur(ch)
-                if ch.regle == "bonbon":
-                    self.dire("Il faut lui lancer un bonbon !", ch.x, ch.y - ch.h / 2 - 40)
-        for b in self.bonbons:
-            if b[2] > 0:
-                b[2] -= DT
-            elif self.poche < POCHE_MAX and r.colliderect((b[0] - 18, b[1] - 12, 36, 24)):
-                self.poche += 1
-                b[2] = RETOUR_BONBON
-                self.dire("+1 bonbon", b[0], b[1] - 20)
-                self.son("bonbon")
+        for b in self.bonbons:  # les bonbons mangés repoussent
+            b[2] = max(0.0, b[2] - DT)
         c = self.corbeau
         if c:
             c.maj()
-            if not c.fetee and r.colliderect(c.rect()):  # touché, de n'importe quel côté
-                if v.vy > 0 and bas_avant <= c.rect().top + 14:
-                    v.rebondir(cmd)
-                c.chasser()
+        for v, cmd in zip(self.vampires, cmds):
+            if not v.vole:
+                self.toucher(v, cmd)
+        if c:
             if c.fini:
                 self.corbeau = None
                 self.prochain_corbeau = random.uniform(*self.niveau["corbeau"][1])
@@ -685,7 +670,7 @@ class Partie:
             self.prochain_corbeau -= DT
             fetees = [ch for ch in self.choses if ch.fetee]
             if self.prochain_corbeau <= 0 and fetees:
-                proches = [ch for ch in fetees if abs(ch.x - v.x) < 1000] or fetees
+                proches = [ch for ch in fetees if abs(ch.x - self.vampire.x) < 1000] or fetees
                 self.corbeau = Corbeau(self, random.choice(proches))
                 self.son("croa")
                 if self.alerte == 0.0:
@@ -722,9 +707,110 @@ class Partie:
                                         random.uniform(-40, 40), 60, 3.0, random.choice(FESTIF)])
         self.maj_camera()
 
+    def bouger(self, v, cmd):
+        """Un personnage bouge (ou coupe une courge, ou vole au bout de la laisse)."""
+        v.bas_avant = v.y + v.H
+        x_avant = v.x
+        if v.vole:
+            self.voler(v)
+            return
+        if v.coupe > 0:  # il coupe la courge : il ne bouge plus
+            avant, v.coupe = v.coupe, v.coupe - DT
+            ch = v.coupe_cible
+            if any(v.coupe <= k < avant for k in COUPS):
+                self.son("tchac")
+                for _ in range(8):
+                    self.particules.append([ch.x, ch.y, random.uniform(-160, 160),
+                                            random.uniform(-260, -80), 0.6, ORANGE])
+            if v.coupe <= 0:
+                ch.transformer()
+            v.maj(manettes.Commande())
+        else:
+            if cmd.coucou_presse and v.courge_proche:  # on est prêt : on coupe
+                v.coupe, v.coupe_cible = DUREE_COUPE, v.courge_proche
+                v.dir = 1 if v.courge_proche.x > v.x + v.W / 2 else -1
+                self.son("couteau")
+            v.maj(cmd)
+        v.courge_proche = None
+        if v.au_sol and v.coupe <= 0:
+            for ch in self.choses:
+                if (ch.genre == "c" and not ch.fetee and abs(ch.x - v.x - v.W / 2) < 60
+                        and abs(ch.y + ch.h / 2 - v.y - v.H) < 8):
+                    v.courge_proche = ch
+        if self.mode == "duo":  # on ne laisse pas l'autre sortir de l'écran
+            autre = self.vampires[1] if v is self.vampires[0] else self.vampires[0]
+            if abs(v.x - autre.x) > max(ECART_MAX, abs(x_avant - autre.x)):
+                v.x, v.vx = x_avant, 0.0
+                self.dire("Restez ensemble !", v.x + v.W / 2, v.y - 20)
+
+    def laisse(self):
+        """Parent et enfant : la laisse magique traîne l'enfant derrière le parent."""
+        parent, enfant = self.vampires
+        if enfant.vole:
+            return
+        dx = parent.x + parent.W / 2 - enfant.x - enfant.W / 2
+        d = math.hypot(dx, parent.y + parent.H - enfant.y - enfant.H)
+        if d <= LAISSE:
+            enfant.tire = 0.0
+            return
+        if d > LAISSE + 40:  # il n'arrive pas à suivre (un mur, une plateforme…)
+            enfant.tire += DT
+        if d > LAISSE_MAX or enfant.tire > TIRE_MAX:
+            enfant.vole = True
+            self.son("magie")
+        elif abs(dx) > 1:
+            enfant.bouger_x(math.copysign(min(abs(dx), d - LAISSE, 420 * DT), dx))
+
+    def voler(self, v):
+        """L'enfant s'envole vers le parent, à travers tout, et se pose à côté de lui."""
+        parent = self.vampire
+        bx, by = parent.x + (parent.W - v.W) / 2, parent.y + parent.H - v.H
+        dx, dy = bx - v.x, by - v.y
+        d, pas = math.hypot(dx, dy), VOL_ENFANT * DT
+        if d <= pas:  # arrivé : là où est le parent, il y a forcément de la place
+            v.x, v.y, v.vx, v.vy = bx, by, 0.0, 0.0
+            v.vole, v.tire, v.au_sol = False, 0.0, parent.au_sol
+        else:
+            v.x, v.y = v.x + dx / d * pas, v.y + dy / d * pas
+            v.dir = 1 if dx > 0 else -1
+            self.particules.append([v.x + v.W / 2, v.y + v.H / 2, random.uniform(-40, 40),
+                                    random.uniform(-80, 0), 0.5, random.choice(FESTIF)])
+
+    def toucher(self, v, cmd):
+        """Ce que touche un personnage : créatures, bonbons à ramasser, corbeau."""
+        r, bas_avant = v.rect(), v.bas_avant
+        for ch in self.choses:
+            if ch.fetee or not r.colliderect(ch.rect()):
+                continue
+            dessus = v.vy > 0 and bas_avant <= ch.rect().top + 12  # on lui retombe dessus
+            if ch.regle == "touche":
+                ch.transformer()
+            elif dessus and ch.regle not in ("bonbon", "couteau"):
+                if ch.genre == "s" and ch.tas <= 0:
+                    ch.effondrer()
+                else:
+                    ch.transformer()
+                v.rebondir(cmd)
+            elif ch.regle in ("mechant", "bonbon") and ch.tas <= 0 and v.invincible <= 0:
+                v.faire_peur(ch)
+                if ch.regle == "bonbon":
+                    self.dire("Il faut lui lancer un bonbon !", ch.x, ch.y - ch.h / 2 - 40)
+        for b in self.bonbons:
+            if b[2] <= 0 and self.poche < POCHE_MAX and r.colliderect((b[0] - 18, b[1] - 12, 36, 24)):
+                self.poche += 1
+                b[2] = RETOUR_BONBON
+                self.dire("+1 bonbon", b[0], b[1] - 20)
+                self.son("bonbon")
+        c = self.corbeau
+        if c and not c.fetee and r.colliderect(c.rect()):  # touché, de n'importe quel côté
+            if v.vy > 0 and bas_avant <= c.rect().top + 14:
+                v.rebondir(cmd)
+            c.chasser()
+
     def maj_camera(self, direct=False):
-        v = self.vampire
-        voulu = max(0, min(self.cols * T - L, v.x + v.W / 2 - L / 2))
+        suivis = self.vampires if self.mode == "duo" else [self.vampire]  # à deux : entre les deux
+        milieu = sum(v.x + v.W / 2 for v in suivis) / len(suivis)
+        voulu = max(0, min(self.cols * T - L, milieu - L / 2))
         self.camera = voulu if direct else self.camera + (voulu - self.camera) * 0.15
 
     # ---- le dessin ----
@@ -776,9 +862,8 @@ class Partie:
         for x, y, absent in self.bonbons:
             if absent <= 0 and -40 < x - cx < L + 40:
                 poser(e, anime("bonbon", self.t + x), x - cx, y + 3 * math.sin(self.t * 3 + x))
-        self.vampire.dessiner(e, cx)
-        if self.courge_proche:  # la courge attend le couteau
-            ch = self.courge_proche
+        self.dessiner_joueurs(e, cx)
+        for ch in {v.courge_proche for v in self.vampires} - {None}:  # la courge attend le couteau
             ecrire(e, f"Couteau : {BOUTONS['coucou']} !", 24, OR,
                    centre=(ch.x - cx, ch.y - ch.h / 2 - 18 - 3 * abs(math.sin(self.t * 5))))
         if self.corbeau:
@@ -793,11 +878,11 @@ class Partie:
         if f < 0.99:
             vignette.set_alpha(round(255 * 0.8 * (1 - f)))
             e.blit(vignette, (0, 0))
-        if f < 0.99:  # le vampire porte sa lumière : on le voit toujours bien
-            v = self.vampire
-            e.blit(halo, halo.get_rect(center=(_z(v.x + v.W / 2 - cx), _z(v.y + v.H / 2))),
-                   special_flags=pygame.BLEND_RGB_ADD)
-            v.dessiner(e, cx)  # par-dessus la lumière : il reste bien net
+        if f < 0.99:  # chacun porte sa lumière : on les voit toujours bien
+            for v in self.vampires:
+                e.blit(halo, halo.get_rect(center=(_z(v.x + v.W / 2 - cx), _z(v.y + v.H / 2))),
+                       special_flags=pygame.BLEND_RGB_ADD)
+            self.dessiner_joueurs(e, cx)  # par-dessus la lumière : ils restent bien nets
         if f > 0.3:
             k = (f - 0.3) / 0.7
             e.fill((round(28 * k), round(14 * k), 0), special_flags=pygame.BLEND_RGB_ADD)
@@ -825,6 +910,23 @@ class Partie:
                 suite = f"{BOUTONS['saut'].capitalize()} : {suite}"
                 ecrire(e, suite, 36, BLANC, centre=(L // 2, 330))
 
+    def dessiner_joueurs(self, e, cx):
+        """Les personnages, et la laisse magique entre le parent et l'enfant."""
+        if self.mode == "parent":
+            parent, enfant = self.vampires
+            a = (parent.x + parent.W / 2 + parent.dir * 10 - cx, parent.y + 30)
+            b = (enfant.x + enfant.W / 2 - cx, enfant.y + 14)
+            d = math.hypot(b[0] - a[0], b[1] - a[1])
+            creux = max(4.0, (LAISSE - d) * 0.4)  # elle pend quand elle n'est pas tendue
+            milieu = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + creux)
+            points = [bezier_point(a, milieu, b, k / 12) for k in range(13)]
+            tendue = d > LAISSE - 10
+            for k in range(12):
+                couleur = OR if tendue else FESTIF[(k + int(self.t * 8)) % 5]
+                dessin.line(e, couleur, points[k], points[k + 1], 3)
+        for v in reversed(self.vampires):  # le premier joueur devant
+            v.dessiner(e, cx)
+
     def dessiner_conseil(self, e):
         """Le conseil du moment, dans la frise, à droite des bonbons."""
         conseil, couleur = None, BLANC
@@ -839,10 +941,10 @@ class Partie:
             conseil = (f"Transforme tout !  {BOUTONS['saut'].capitalize()} : sauter   "
                        f"{BOUTONS['action'].capitalize()} : bonbon   {BOUTONS['coucou'].capitalize()} : couteau")
         if conseil:
-            lignes = envelopper(conseil, 26, 820)
-            dessin.rect(e, (20, 16, 34), (400, 8, 870, 64), border_radius=18)
+            lignes = envelopper(conseil, 26, 700)
+            dessin.rect(e, (20, 16, 34), (400, 8, 750, 64), border_radius=18)
             for k, ligne in enumerate(lignes[:2]):
-                ecrire(e, ligne, 26, couleur, centre=(835, 40 + (k - (len(lignes[:2]) - 1) / 2) * 24))
+                ecrire(e, ligne, 26, couleur, centre=(775, 40 + (k - (len(lignes[:2]) - 1) / 2) * 24))
 
     def dessiner_poche(self, e):
         """Dans la frise, à gauche : les bonbons en poche (une place vide : un rond sombre),

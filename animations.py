@@ -120,9 +120,10 @@ def squelette(phase, fete):
     return _svg((0, -8, 48, 72), corps + tete_svg)
 
 
-def vampire(phase, etat="repos"):
+def vampire(phase, etat="repos", doublure="#a3122a", noeud=None):
     """Le vampire, tourné vers la droite : au repos (il respire et cligne des yeux),
-    en marche (jambes, cape qui flotte derrière) ou en l'air (jambes repliées)."""
+    en marche (jambes, cape qui flotte derrière) ou en l'air (jambes repliées).
+    doublure : la couleur du dedans de la cape et du col ; noeud : un nœud sur la tête."""
     p = phase * TAU
     s, c = math.sin(p), math.cos(p)
     if etat == "marche":
@@ -140,7 +141,7 @@ def vampire(phase, etat="repos"):
     cape = (f'<path d="M8 {26 + dy:.1f} L{2 - flot:.1f} {58 - flot * 0.6:.1f} '
             f'Q{12:.1f} {58 + vague:.1f} 24 {54 + dy:.1f} Q35 {57 - vague:.1f} 46 60 L40 {26 + dy:.1f} Z" fill="#2a0f2e"/>'
             f'<path d="M10 {28 + dy:.1f} L{6 - flot * 0.8:.1f} {55 - flot * 0.5:.1f} '
-            f'Q14 {54 + vague:.1f} 24 {51 + dy:.1f} Q34 {54 - vague:.1f} 42 56 L38 {28 + dy:.1f} Z" fill="#a3122a"/>')
+            f'Q14 {54 + vague:.1f} 24 {51 + dy:.1f} Q34 {54 - vague:.1f} 42 56 L38 {28 + dy:.1f} Z" fill="{doublure}"/>')
     jambes = "".join(
         f'<polyline points="{_points(((x0, 50 + dy), (x0 + jx, 61 - lever)))}"/>'
         for x0, (jx, lever) in zip((19, 29), pieds))
@@ -154,12 +155,15 @@ def vampire(phase, etat="repos"):
     haut = (f'<g transform="translate(0 {dy:.1f})">'
             '<rect x="14" y="28" width="20" height="24" rx="5" fill="#1d1d2b"/>'
             '<path d="M20 28 L24 38 L28 28 Z" fill="#f2f2f2"/>'
-            '<path d="M10 30 L14 16 L20 26 Z" fill="#a3122a"/><path d="M38 30 L34 16 L28 26 Z" fill="#a3122a"/>'
+            f'<path d="M10 30 L14 16 L20 26 Z" fill="{doublure}"/><path d="M38 30 L34 16 L28 26 Z" fill="{doublure}"/>'
             '<ellipse cx="24" cy="18" rx="10" ry="11" fill="#cfe3d6"/>'
             '<path d="M13 16 Q14 5 24 6 Q34 5 35 16 Q30 10 24 14 Q18 10 13 16 Z" fill="#141420"/>'
             f'{yeux}'
             '<path d="M23 24 Q27 27 31 24" stroke="#5a1020" stroke-width="1.2" fill="none"/>'
-            '<path d="M24.5 24.6 L25.5 27 L26.3 25.2 Z M28.3 25.2 L29 27 L29.8 24.6 Z" fill="#fff"/></g>')
+            '<path d="M24.5 24.6 L25.5 27 L26.3 25.2 Z M28.3 25.2 L29 27 L29.8 24.6 Z" fill="#fff"/>'
+            + (f'<path d="M24 7 L16 2 L17 11 Z M24 7 L32 2 L31 11 Z" fill="{noeud}"/>'
+               f'<circle cx="24" cy="7" r="2.6" fill="{noeud}" stroke="#141420" stroke-width="0.6"/>'
+               if noeud else '') + '</g>')
     return _svg((-6, 0, 54, 64), cape + jambes + haut)
 
 
@@ -492,6 +496,13 @@ ANIMES = {
     "vampire": (lambda ph: vampire(ph, "repos"), 16, 0.25),
     "vampire_marche": (lambda ph: vampire(ph, "marche"), 12, 1.0),  # suit les pas, pas le temps
     "vampire_saut": (lambda ph: vampire(ph, "saut"), 1, 1.0),
+    # la vampirette (deuxième joueur à deux) et le petit vampire (l'enfant)
+    "vampirette": (lambda ph: vampire(ph, "repos", "#7a2bd6", "#ff5aa0"), 16, 0.25),
+    "vampirette_marche": (lambda ph: vampire(ph, "marche", "#7a2bd6", "#ff5aa0"), 12, 1.0),
+    "vampirette_saut": (lambda ph: vampire(ph, "saut", "#7a2bd6", "#ff5aa0"), 1, 1.0),
+    "petit": (lambda ph: vampire(ph, "repos", "#e8781e"), 16, 0.3),
+    "petit_marche": (lambda ph: vampire(ph, "marche", "#e8781e"), 12, 1.0),
+    "petit_saut": (lambda ph: vampire(ph, "saut", "#e8781e"), 1, 1.0),
     "squelette": (lambda ph: squelette(ph, False), 12, 1.5),
     "squelette_danse": (lambda ph: squelette(ph, True), 40, 0.32),
     "chauve_souris": (chauve_souris, 8, 3.0),

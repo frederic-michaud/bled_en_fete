@@ -1,9 +1,10 @@
 """Vampire en fête — un vampire redécore son château lugubre pour Halloween.
-Un seul joueur à la manette (base technique reprise de « Les Deux Amis »).
+Seul, à deux, ou parent et enfant, à la manette (base technique reprise de « Les Deux Amis »).
 
 Lancer avec :  .venv/bin/python jeu.py
-Le jeu passe par quatre écrans (Jeu.etat) : « titre » (l'accueil devant le château),
-« voyage » (d'une salle à l'autre), « jeu » (dans une salle) et « fin » (la grande fête).
+Les écrans (Jeu.etat) : « titre » (l'accueil devant le château), « mode » (seul, à deux,
+parent et enfant), « nom » (chacun écrit son nom), « voyage » (d'une salle à l'autre),
+« jeu » (dans une salle), « fin » (la grande fête) et « honneur » (le tableau d'honneur).
 """
 import math
 import os
@@ -17,14 +18,20 @@ import pygame
 from pygame._sdl2 import video
 
 import musique
+import palmares
 from dehors import ARRIVEE, ENTREE, FENETRES, SORTIE, VOL, Dehors, bezier, doux, vignette, zoomer
-from niveaux import BOUTONS, NIVEAUX
-from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire, melange,
-                    poser, preparer_images)
-from partie import Partie
+from niveaux import BOUTONS, MODES, NIVEAUX
+from outils import (BLANC, DT, FESTIF, H, L, OR, ORANGE, ZOOM, anime, dessin, ecrire, envelopper,
+                    melange, police, poser, preparer_images)
+from partie import PERSONNAGES, Partie
 from sons import creer_sons
 
 TITRE = "Vampire en fête"
+# le clavier à l'écran pour écrire son nom à la manette
+GRILLE = [list("ABCDEFGHIJ"), list("KLMNOPQRST"), list("UVWXYZ-"), ["Effacer", "C'est fini !"]]
+NOM_MAX = 10
+QUI = {"solo": ("Ton nom",), "duo": ("Joueur 1 : ton nom", "Joueur 2 : ton nom"),
+       "parent": ("Le parent : ton nom", "L'enfant : ton nom")}
 
 
 class Jeu:
@@ -45,10 +52,18 @@ class Jeu:
         self.sons = creer_sons()
         self.musique = musique.Musique()
         self.entrees = manettes.Entrees()
-        self.etat = "titre"       # titre, voyage, jeu ou fin
+        self.etat = "titre"       # titre, mode, nom, voyage, jeu, fin ou honneur
         self.partie = None
         self.niveau = 0           # salle choisie à l'accueil
         self.ouvertes = 1         # on ne peut choisir que les salles déjà atteintes
+        self.mode = "solo"        # seul, à deux (duo) ou parent et enfant (parent)
+        self.choix_mode = 0
+        self.noms = ["", ""]      # le nom de chaque joueur (gardé pour la partie suivante)
+        self.qui = 0              # le joueur qui écrit son nom
+        self.curseur = [0, 0]     # la lettre choisie dans GRILLE (ligne, colonne)
+        self.chrono = 0.0         # le temps passé dans les salles depuis la salle 1
+        self.chrono_ok = False    # partis de la salle 1 sans revenir à l'accueil
+        self.reussite = None      # la dernière réussite inscrite au tableau d'honneur
         self.pause = False
         self.t = 0.0
         self.titre_t = 0.0        # depuis quand on est à l'accueil (le vampire arrive)
@@ -60,6 +75,8 @@ class Jeu:
         self.fusees = []          # feux d'artifice de la fin : les fusées qui montent…
         self.feux = []            # … et les étincelles quand elles éclatent
         preparer_images()
+        self.voile = pygame.Surface((L * ZOOM, H * ZOOM), pygame.SRCALPHA)  # derrière les menus
+        self.voile.fill((8, 6, 20, 170))
         self.dehors = Dehors()
         self.sombres = []         # l'aperçu assombri de chaque salle, pas encore en fête
         for i, r in enumerate(FENETRES):
@@ -77,7 +94,7 @@ class Jeu:
     def commencer(self, i_niveau=None):
         if i_niveau is not None:
             self.niveau = i_niveau
-        self.partie = Partie(self.niveau, self.son)
+        self.partie = Partie(self.niveau, self.son, self.mode)
         self.etat, self.pause = "jeu", False
         self.son("clic")
 
@@ -152,9 +169,11 @@ class Jeu:
         (ou vers None : la grande fête finale)."""
         partie, apres = None, None
         if vers is not None:
-            partie, apres = Partie(vers, self.son), pygame.Surface((L * ZOOM, H * ZOOM))
+            partie, apres = Partie(vers, self.son, self.mode), pygame.Surface((L * ZOOM, H * ZOOM))
             partie.dessiner(apres, apercu=True)
         self.voyage = {"depuis": depuis, "vers": vers, "t": 0.0, "partie": partie, "apres": apres}
+        if depuis is None:  # on part de l'accueil : le chrono repart de zéro
+            self.chrono, self.chrono_ok = 0.0, vers == 0
         if depuis is not None:
             self.salles[depuis] = self.partie  # elle continue la fête
         self.etat = "voyage"
@@ -179,9 +198,14 @@ class Jeu:
             return musique.FETE
         return musique.ambiance_de(len(self.salles) / len(NIVEAUX))
 
-    def image(self, cmd=None):
-        """Calcule et dessine une image du jeu."""
+    def joueurs(self):
+        return 1 if self.mode == "solo" else 2
+
+    def image(self, cmds=None):
+        """Calcule et dessine une image du jeu. cmds : une Commande par joueur (ou une
+        seule) ; sans rien, on lit les manettes et le clavier."""
         echap = entree = False
+        tape = []  # ce qu'on tape au clavier en écrivant son nom
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 self.quitter()
@@ -192,6 +216,8 @@ class Jeu:
                     echap = True
                 elif ev.key == pygame.K_RETURN:
                     entree = True
+                elif self.etat == "nom":
+                    tape.append("Effacer" if ev.key == pygame.K_BACKSPACE else ev.unicode)
                 elif ev.key == pygame.K_f and self.rendu:
                     self.plein_ecran = not self.plein_ecran
                     if self.plein_ecran:
@@ -204,8 +230,11 @@ class Jeu:
                     self.regler()
                 elif ev.key == pygame.K_r and self.etat == "jeu":
                     self.commencer()
-        if cmd is None:
-            cmd = self.entrees.lire()
+        if cmds is None:
+            cmds = self.entrees.lire(self.joueurs(), clavier=self.etat != "nom")
+        elif isinstance(cmds, manettes.Commande):
+            cmds = [cmds]
+        cmd = manettes.ensemble(cmds)  # pour les menus : n'importe quel joueur
         self.t += DT
         ok = entree or cmd.saut_presse or cmd.pause_presse
         if self.etat == "titre":
@@ -215,10 +244,27 @@ class Jeu:
                 if choix != self.niveau:
                     self.niveau = choix
                     self.son("clic")
-            if ok and self.titre_t > 0.5:
-                self.partir(None, self.niveau)
+            if self.titre_t > 0.5 and (entree or cmd.saut_presse):
+                self.etat = "mode"
+                self.son("clic")
+            elif self.titre_t > 0.5 and cmd.coucou_presse:
+                self.etat, self.reussite = "honneur", None
+                self.son("clic")
             elif echap:
                 self.quitter()
+        elif self.etat == "mode":
+            if cmd.gauche_presse or cmd.droite_presse:
+                self.choix_mode = (self.choix_mode + cmd.droite_presse - cmd.gauche_presse) % len(MODES)
+                self.son("clic")
+            if entree or cmd.saut_presse:
+                self.mode = MODES[self.choix_mode][0]
+                self.ecrire_nom(0)
+            elif echap or cmd.pause_presse:
+                self.etat = "titre"
+        elif self.etat == "nom":
+            self.maj_nom(cmds[min(self.qui, len(cmds) - 1)], tape, entree)
+            if echap:
+                self.etat = "mode"
         elif self.etat == "voyage":
             v = self.voyage
             v["t"] += DT
@@ -229,18 +275,26 @@ class Jeu:
                 self.etat, self.feux, self.fusees = "fin", [], []
                 self.tout_en_fete()
                 self.son("bravo")
+                if self.chrono_ok:
+                    noms = [n for n in self.noms[:self.joueurs()]]
+                    self.reussite = palmares.ajouter(noms, self.mode, self.chrono)
+                    self.chrono_ok = False
             elif v["t"] >= sortie + vol + entree_:
                 self.partie, self.niveau = v["partie"], v["vers"]
                 self.etat, self.pause = "jeu", False
         elif self.etat == "fin":
             self.maj_feux()
             if ok or echap:
-                self.etat, self.titre_t, self.niveau = "titre", 3.0, 0
+                self.etat = "honneur" if self.reussite and not echap else "titre"
+                self.titre_t, self.niveau = 3.0, 0
                 self.salles, self.vignettes = {}, {}
+        elif self.etat == "honneur":
+            if ok or echap or cmd.coucou_presse:
+                self.etat, self.titre_t = "titre", 3.0
         elif self.etat == "jeu":
             p = self.partie
             if echap:
-                self.etat, self.titre_t = "titre", 3.0
+                self.etat, self.titre_t, self.chrono_ok = "titre", 3.0, False
             elif p.gagne_t is not None and p.gagne_t > 2.5 and (cmd.saut_presse or entree):
                 suivante = p.i_niveau + 1
                 self.ouvertes = max(self.ouvertes, min(suivante + 1, len(NIVEAUX)))
@@ -248,11 +302,57 @@ class Jeu:
             elif cmd.pause_presse or (self.pause and entree):
                 self.pause = not self.pause
             elif not self.pause:
-                p.maj(cmd)
+                p.maj(cmds)
+                if p.gagne_t is None:
+                    self.chrono += DT
         if self.etat != "jeu":
             self.animer_salles()
         self.musique.maj(self.ambiance(), DT)
         self.dessiner()
+
+    def ecrire_nom(self, qui):
+        """Le joueur qui écrit son nom ; s'il en a déjà un, on se place sur « C'est fini »."""
+        self.etat, self.qui = "nom", qui
+        self.curseur = [3, 1] if self.noms[qui] else [0, 0]
+        self.son("clic")
+
+    def maj_nom(self, cmd, tape, entree):
+        """Le clavier à l'écran : la croix choisit une lettre, le bouton du bas l'écrit.
+        On peut aussi taper son nom au clavier (Entrée pour finir)."""
+        ligne, col = self.curseur
+        if cmd.haut_presse or cmd.bas_presse:
+            avant = len(GRILLE[ligne]) - 1
+            ligne = (ligne + cmd.bas_presse - cmd.haut_presse) % len(GRILLE)
+            col = round(col / max(1, avant) * (len(GRILLE[ligne]) - 1))
+        if cmd.gauche_presse or cmd.droite_presse:
+            col = (col + cmd.droite_presse - cmd.gauche_presse) % len(GRILLE[ligne])
+        if (ligne, col) != tuple(self.curseur):
+            self.son("clic")
+        self.curseur = [ligne, col]
+        if cmd.saut_presse:
+            tape.append(GRILLE[ligne][col])
+        if entree:
+            tape.append("C'est fini !")
+        if cmd.pause_presse:
+            tape.append("Effacer")
+        nom = self.noms[self.qui]
+        for t in tape:
+            if t == "Effacer":
+                nom = nom[:-1]
+            elif t == "C'est fini !":
+                if not nom.strip("-"):
+                    self.son("vide")  # il faut au moins une lettre
+                    continue
+                self.noms[self.qui] = nom
+                if self.qui + 1 < self.joueurs():
+                    self.ecrire_nom(self.qui + 1)
+                else:
+                    self.partir(None, self.niveau)
+                return
+            elif len(t) == 1 and (t.isalpha() or t == "-") and len(nom) < NOM_MAX:
+                nom += t.upper() if not nom or nom[-1] == "-" else t.lower()
+                self.son("clic")
+        self.noms[self.qui] = nom
 
     def afficher(self):
         if self.rendu:
@@ -273,16 +373,29 @@ class Jeu:
         e = self.ecran
         if self.etat == "titre":
             self.dessiner_accueil(e)
+        elif self.etat in ("mode", "nom", "honneur"):
+            self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
+            e.blit(self.voile, (0, 0))
+            {"mode": self.dessiner_modes, "nom": self.dessiner_nom,
+             "honneur": self.dessiner_honneur}[self.etat](e)
         elif self.etat == "voyage":
             self.dessiner_voyage(e)
         elif self.etat == "fin":
             self.dehors.dessiner(e, self.t, self.vues(), set(self.salles))
             self.dessiner_feux(e)
             poser(e, anime("vampire", self.t), 640, 236 - 8 * abs(math.sin(self.t * 3)), echelle=0.8)
-            ecrire(e, "Tout le château est en fête !", 76, OR, centre=(L // 2, 640))
-            ecrire(e, f"{BOUTONS['saut'].capitalize()} : retour à l'accueil", 32, BLANC, centre=(L // 2, 695))
+            ecrire(e, "Tout le château est en fête !", 76, OR, centre=(L // 2, 620))
+            if self.reussite:
+                ecrire(e, f"En {palmares.duree(self.reussite['temps'])} !   "
+                          f"{BOUTONS['saut'].capitalize()} : le tableau d'honneur", 32, BLANC, centre=(L // 2, 685))
+            else:
+                ecrire(e, f"{BOUTONS['saut'].capitalize()} : retour à l'accueil", 32, BLANC, centre=(L // 2, 685))
         else:
             self.partie.dessiner(e)
+            if self.chrono_ok:  # le temps, dans la frise, tout à droite
+                dessin.rect(e, (20, 16, 34), (1160, 8, 110, 64), border_radius=18)
+                m, sec = divmod(int(self.chrono), 60)
+                ecrire(e, f"{m}:{sec:02d}", 34, BLANC, centre=(1215, 41))
             if self.pause:
                 voile = pygame.Surface(e.get_size(), pygame.SRCALPHA)
                 voile.fill((10, 10, 30, 150))
@@ -309,8 +422,82 @@ class Jeu:
             consigne += "   (la croix : choisir la salle)"
         ecrire(e, salle, 38, BLANC, centre=(L // 2, 608))
         ecrire(e, consigne, 32, OR, centre=(L // 2, 650))
-        ecrire(e, f"{self.entrees.nom()}      C : manettes   F : plein écran   M : musique   Échap : quitter",
+        ecrire(e, f"{self.entrees.nom()}      {BOUTONS['coucou'].capitalize()} : le tableau d'honneur   "
+                  "C : manettes   F : plein écran   M : musique   Échap : quitter",
                22, BLANC, centre=(L // 2, 696))
+
+    def dessiner_perso(self, e, mode, k, x, y, echelle=1.0):
+        """Le personnage k d'une façon de jouer, qui sautille."""
+        nom = PERSONNAGES[mode][k][0]
+        poser(e, anime(nom, self.t + k), x, y - 6 * abs(math.sin(self.t * 3 + k)), k == 1, echelle=echelle)
+
+    def dessiner_modes(self, e):
+        ecrire(e, "Comment voulez-vous jouer ?", 70, ORANGE, centre=(L // 2, 90))
+        for k, (mode, nom, explication) in enumerate(MODES):
+            x, choisi = L // 2 + (k - 1) * 410, k == self.choix_mode
+            dessin.rect(e, (34, 26, 56) if choisi else (22, 18, 36), (x - 190, 170, 380, 390), border_radius=24)
+            dessin.rect(e, OR if choisi else (80, 70, 100), (x - 190, 170, 380, 390), 4 if choisi else 2,
+                        border_radius=24)
+            persos = PERSONNAGES[mode]
+            for i in range(len(persos)):
+                self.dessiner_perso(e, mode, i, x + (i - (len(persos) - 1) / 2) * 80, 270, 1.6)
+            ecrire(e, nom, 46, OR if choisi else BLANC, centre=(x, 370))
+            for i, ligne in enumerate(envelopper(explication, 28, 330)):
+                ecrire(e, ligne, 28, BLANC, centre=(x, 420 + i * 30))
+        mode = MODES[self.choix_mode][0]
+        if mode != "solo":
+            qui = ("Parent", "Enfant") if mode == "parent" else ("Joueur 1", "Joueur 2")
+            ecrire(e, f"{qui[0]} : {self.entrees.nom(0)}      {qui[1]} : {self.entrees.nom(1)}", 26, BLANC,
+                   centre=(L // 2, 600))
+        ecrire(e, f"La croix : choisir   {BOUTONS['saut'].capitalize()} : c'est parti !   "
+                  f"{BOUTONS['pause'].capitalize()} : retour", 32, OR, centre=(L // 2, 660))
+
+    def dessiner_nom(self, e):
+        ecrire(e, QUI[self.mode][self.qui], 70, ORANGE, centre=(L // 2, 80))
+        self.dessiner_perso(e, self.mode, self.qui, 360, 190, 1.8)
+        nom = self.noms[self.qui]
+        dessin.rect(e, (22, 18, 36), (440, 150, 400, 80), border_radius=18)
+        dessin.rect(e, OR, (440, 150, 400, 80), 3, border_radius=18)
+        curseur = "_" if int(self.t * 2) % 2 and len(nom) < NOM_MAX else " "
+        ecrire(e, nom + curseur, 56, BLANC, centre=(640, 192))
+        for i, ligne in enumerate(GRILLE):
+            large = len(ligne) == 2
+            pas = 260 if large else 72
+            for j, texte in enumerate(ligne):
+                x = L // 2 + (j - (len(ligne) - 1) / 2) * pas
+                y = 300 + i * 80
+                w = 240 if large else 62
+                choisi = [i, j] == self.curseur
+                dessin.rect(e, (60, 44, 90) if choisi else (30, 24, 46), (x - w / 2, y - 30, w, 60), border_radius=12)
+                if choisi:
+                    dessin.rect(e, OR, (x - w / 2, y - 30, w, 60), 3, border_radius=12)
+                ecrire(e, texte, 34 if large else 44, OR if choisi else BLANC, centre=(x, y))
+        ecrire(e, f"La croix : choisir une lettre   {BOUTONS['saut'].capitalize()} : l'écrire   "
+                  f"{BOUTONS['pause'].capitalize()} : effacer", 30, OR, centre=(L // 2, 640))
+        ecrire(e, "(ou tape ton nom au clavier, puis Entrée)", 24, BLANC, centre=(L // 2, 680))
+
+    def dessiner_honneur(self, e):
+        ecrire(e, "Le tableau d'honneur", 76, ORANGE, centre=(L // 2, 70))
+        for k, (mode, nom, _) in enumerate(MODES):
+            x = L // 2 + (k - 1) * 415
+            dessin.rect(e, (22, 18, 36), (x - 200, 125, 400, 500), border_radius=24)
+            ecrire(e, nom, 40, OR, centre=(x, 160))
+            classement = palmares.classement(mode)
+            if not classement:
+                ecrire(e, "Personne encore !", 28, (170, 160, 190), centre=(x, 230))
+            for i, r in enumerate(classement[:10]):
+                y = 210 + i * 40
+                couleur = OR if r == self.reussite and int(self.t * 3) % 2 else BLANC
+                temps, noms = palmares.duree(r["temps"]), " et ".join(r["noms"])
+                taille = 28 if police(28).size(noms)[0] / ZOOM < 300 - police(28).size(temps)[0] / ZOOM else 21
+                ecrire(e, f"{i + 1}.", 28, couleur, gauche=(x - 185, y - 10))
+                ecrire(e, noms, taille, couleur, gauche=(x - 150, y - 10 + (28 - taille) / 2))
+                ecrire(e, temps, 28, couleur, gauche=(x + 188 - police(28).size(temps)[0] / ZOOM, y - 10))
+            if self.reussite in classement[10:]:
+                rang = classement.index(self.reussite) + 1
+                ecrire(e, f"Vous : {rang}e, en {palmares.duree(self.reussite['temps'])}", 28, OR,
+                       centre=(x, 600))
+        ecrire(e, f"{BOUTONS['saut'].capitalize()} : retour à l'accueil", 32, BLANC, centre=(L // 2, 670))
 
     def dessiner_voyage(self, e):
         v = self.voyage
@@ -323,8 +510,9 @@ class Jeu:
         elif t < sortie + vol:  # le vampire vole jusqu'à la salle suivante
             depart = ARRIVEE if v["depuis"] is None else FENETRES[v["depuis"]].center
             u = doux((t - sortie) / vol)
-            x, y = bezier(depart, FENETRES[vers].center, u)
-            poser(e, "vampire_saut@0", x, y, FENETRES[vers].centerx < depart[0], echelle=0.6)
+            for k, (nom, _) in reversed(list(enumerate(PERSONNAGES[self.mode]))):  # l'autre suit
+                x, y = bezier(depart, FENETRES[vers].center, max(0.0, u - 0.08 * k))
+                poser(e, nom + "_saut@0", x, y, FENETRES[vers].centerx < depart[0], echelle=0.6)
             ecrire(e, f"Salle {vers + 1} : {NIVEAUX[vers]['nom']}", 48, OR, centre=(L // 2, 640))
         else:  # on plonge dans la nouvelle salle
             zoomer(e, v["apres"], FENETRES[vers], (0, 0, L, H), (t - sortie - vol) / ENTREE)
@@ -334,6 +522,7 @@ class Jeu:
         ent = self.entrees
         consignes = {"gauche": "pousse la croix vers la GAUCHE",
                      "droite": "pousse la croix vers la DROITE",
+                     "haut": "pousse la croix vers le HAUT",
                      "bas": "pousse la croix vers le BAS",
                      "saut": "appuie sur le bouton du BAS (sauter)",
                      "action": "appuie sur le bouton de DROITE (lancer un bonbon)",

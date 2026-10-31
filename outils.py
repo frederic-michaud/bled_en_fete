@@ -21,6 +21,8 @@ FESTIF = [ORANGE, VIOLET, ROSE, VERT, OR]
 # Taille d'affichage de chaque image, en pixels du jeu (les dessins sont dans animations.py).
 TAILLES = {
     "vampire": (54, 64), "vampire_marche": (54, 64), "vampire_saut": (54, 64),
+    "vampirette": (54, 64), "vampirette_marche": (54, 64), "vampirette_saut": (54, 64),
+    "petit": (41, 48), "petit_marche": (41, 48), "petit_saut": (41, 48),
     "courge": (56, 56), "soupe": (60, 68),
     "squelette": (40, 60), "squelette_danse": (40, 60), "squelette_tas": (44, 33),
     "fantome_peur": (60, 60), "fantome_gentil": (56, 56),

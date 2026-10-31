@@ -6,6 +6,13 @@ une salle (et alors une fenêtre dans dehors.FENETRES)."""
 BOUTONS = {"saut": "bouton du bas", "action": "bouton de droite",
            "coucou": "bouton du haut", "pause": "bouton de gauche"}
 
+# Les façons de jouer : (nom dans le code, nom affiché, explication).
+MODES = [("solo", "Seul", "Un vampire, un joueur."),
+         ("duo", "À deux", "Deux vampires, les mêmes pouvoirs. Restez ensemble : "
+                           "personne ne peut sortir de l'écran !"),
+         ("parent", "Parent et enfant", "Le parent mène la danse. Le petit vampire le suit "
+                                        "au bout de sa laisse magique.")]
+
 # ---- Les salles du château ----
 # Le plafond (rangées 0 et 1 : la frise, où il ne se passe rien), le sol (rangée 17) et
 # les murs des deux bouts sont mis tout seuls.
