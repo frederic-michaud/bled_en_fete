@@ -19,30 +19,35 @@ MODES = [("solo", "Seul", "Un vampire, un joueur."),
 # Chaque élément du plan : (rangée, colonne, contenu), une lettre par tuile.
 #   #  pierre      -  planche (on la traverse par-dessous)      V  départ du vampire
 #   c  courge      s  squelette     f  fantôme      b  chauve-souris
-#   t  toile d'araignée              l  chandelier      o  bonbon à ramasser
-# Pour chaque salle : nom, décor (voir decors.py), largeur (colonnes), plan, bonbons en poche au départ,
+#   t  toile d'araignée              l  lampe (selon la salle)      o  bonbon à ramasser
+# Pour chaque salle : nom, décor (voir decors.py), objets (les lampes de la salle), largeur (colonnes), plan, bonbons en poche au départ,
 # corbeau (premier passage, attente entre deux passages, vitesse ; None : pas de
 # corbeau) et aides (colonne à partir de laquelle on affiche le conseil).
 RANGS = 18
 NIVEAUX = [
-    {"nom": "La Bricotine", "decor": "bricotine", "cols": 48, "poche": 3, "corbeau": None,
+    {"nom": "La Bricotine", "decor": "bricotine",
+     "objets": {"l": ("neon_eteint", "neon_allume")}, "cols": 48, "poche": 3, "corbeau": None,
      "plan": [
          (16, 3, "V"), (16, 8, "c"), (13, 14, "l"), (14, 20, "b"), (16, 23, "o"),
+         (15, 11, "-----"),                                   # l'établi
          (13, 28, "f"), (14, 31, "-----"), (11, 36, "-----"), (8, 41, "t"), (10, 37, "o"),
          (15, 34, "#"), (16, 34, "#"), (16, 41, "s"), (16, 45, "o"),
      ],
      "aides": [(1, "Va à côté de la courge, puis bouton du haut : le couteau !"),
-               (11, "Touche le chandelier pour l'allumer"),
+               (11, "Touche le néon pour l'allumer"),
                (17, "Saute sur la chauve-souris (bouton du bas) !"),
                (22, "Ramasse le bonbon, puis bouton de droite pour le lancer"),
                (25, "Le fantôme n'a peur que des bonbons : bouton de droite !"),
                (31, "Grimpe et touche la toile d'araignée"),
                (38, "Le squelette : saute-lui dessus deux fois ! Les bonbons ne marchent pas")]},
-    {"nom": "Le foyer", "decor": "foyer", "cols": 64, "poche": 3, "corbeau": (30.0, (20.0, 28.0), 90.0),
+    {"nom": "Le foyer", "decor": "foyer",
+     "objets": {"l": ("suspension_eteinte", "suspension_allumee")}, "cols": 64, "poche": 3, "corbeau": (30.0, (20.0, 28.0), 90.0),
      "plan": [
          (16, 3, "V"),
-         (15, 18, "#"), (16, 18, "#"), (15, 32, "#"), (16, 32, "#"), (15, 48, "#"), (16, 48, "#"),
-         (14, 12, "-----"), (14, 34, "-----"), (14, 52, "-----"),
+         (15, 18, "#"), (16, 18, "#"), (15, 48, "#"), (16, 48, "#"),
+         (15, 30, "######"), (16, 30, "######"),             # le comptoir du bar
+         (15, 6, "---"),                                      # une table
+         (14, 12, "-----"), (13, 37, "-----"), (14, 52, "-----"),
          (11, 18, "------"), (11, 40, "------"),
          (8, 12, "-----"), (8, 26, "------"), (8, 38, "---"), (8, 44, "------"), (8, 56, "------"),
          (5, 5, "-------"), (5, 22, "-------"), (5, 50, "------"),
@@ -58,7 +63,8 @@ NIVEAUX = [
                (9, ""),
                (20, "Un corbeau grognon viendra défaire tes décorations : touche-le pour le chasser"),
                (30, "")]},
-    {"nom": "La Tanière", "decor": "taniere", "cols": 80, "poche": 3, "corbeau": (20.0, (14.0, 22.0), 110.0),
+    {"nom": "La Tanière", "decor": "taniere",
+     "objets": {"l": ("projecteur_eteint", "projecteur_allume")}, "cols": 80, "poche": 3, "corbeau": (20.0, (14.0, 22.0), 110.0),
      "plan": [
          (2, 2, "t"), (2, 37, "t"), (2, 77, "t"),
          (3, 32, "l"), (3, 55, "l"), (3, 66, "l"),
@@ -67,19 +73,22 @@ NIVEAUX = [
          (8, 2, "-----"), (8, 24, "------"), (8, 36, "-------"), (8, 44, "------"), (8, 62, "-----"),
          (8, 69, "----------"),
          (11, 8, "-----"), (11, 18, "------"), (11, 36, "------"), (11, 54, "------"), (11, 70, "------"),
-         (14, 13, "------"), (14, 30, "------"), (14, 46, "-----"), (14, 62, "------"),
+         (16, 12, "########"), (15, 14, "######"), (14, 16, "####"), (13, 18, "##"),  # les gradins
+         (16, 66, "##########"),                              # l'estrade
+         (14, 30, "------"), (14, 46, "-----"), (14, 62, "------"),
          (12, 27, "f"), (9, 50, "f"), (6, 71, "f"),
          (15, 28, "#"), (16, 28, "#"), (15, 48, "#"), (16, 48, "#"), (15, 64, "#"), (16, 64, "#"),
          (13, 15, "o"), (13, 32, "o"), (10, 38, "o"), (7, 46, "o"), (4, 54, "o"), (10, 72, "o"),
-         (16, 60, "o"), (16, 17, "o"),
-         (16, 3, "V"), (16, 10, "c"), (16, 22, "s"), (16, 40, "c"), (16, 55, "s"), (16, 72, "c"),
+         (16, 60, "o"), (12, 19, "o"),
+         (16, 3, "V"), (16, 10, "c"), (16, 22, "s"), (16, 40, "c"), (16, 55, "s"), (15, 72, "c"),
      ],
      "aides": []},
-    {"nom": "La terrasse du 5e", "decor": "terrasse", "cols": 96, "poche": 2, "corbeau": (12.0, (9.0, 15.0), 140.0),
+    {"nom": "La terrasse du 5e", "decor": "terrasse",
+     "objets": {"l": ("lampion_eteint", "lampion_allume")}, "cols": 96, "poche": 2, "corbeau": (12.0, (9.0, 15.0), 140.0),
      "plan": [
-         (14, 24, "#"), (15, 24, "#"), (16, 24, "#"),
-         (13, 48, "#"), (14, 48, "#"), (15, 48, "#"), (16, 48, "#"),
-         (14, 72, "#"), (15, 72, "#"), (16, 72, "#"),
+         (15, 22, "###"), (16, 22, "###"),                    # les bacs du potager
+         (14, 47, "###"), (15, 47, "###"), (16, 47, "###"),
+         (15, 70, "###"), (16, 70, "###"),
          (14, 8, "-----"), (14, 30, "-----"), (14, 44, "---"), (14, 56, "-----"), (14, 78, "-----"),
          (11, 14, "------"), (11, 36, "------"), (11, 50, "------"), (11, 64, "------"), (11, 86, "------"),
          (8, 8, "-----"), (8, 20, "------"), (8, 42, "------"), (8, 58, "------"), (8, 65, "----"),

@@ -6,7 +6,10 @@ TRIBU architecture). Vu de la cour la nuit (`dehors.py`), avec 4 salles de bas e
 la Bricotine (atelier du sous-sol + vélostation), le foyer (rez, mélèze, bar, vitres sur
 la cour, inventé), la Tanière (salle polyvalente : noire, écran, gradins, projecteurs),
 la terrasse du 5e (dehors : pergola, potager, lac et Alpes). Les décors sont dans
-`decors.py` (un mur, une frise et des tuiles par salle, lugubres et en fête). Les photos
+`decors.py` (un mur, une frise et des tuiles par salle, lugubres et en fête). Chaque salle a
+aussi ses lampes à allumer (`NIVEAUX[i]["objets"]` : néon, suspension, projecteur, lampion,
+à la place du chandelier) et un plan qui rappelle le lieu (établi, comptoir du bar, gradins
+et estrade, bacs du potager). Les photos
 du site ont servi de modèle seulement : aucune image n'est copiée dans le jeu.
 
 Un vampire redécore son château lugubre pour Halloween. Il traverse 4 salles et doit

@@ -491,6 +491,70 @@ def courge(phase):
                 '</g>')
 
 
+# ---- les lampes propres à chaque salle du Bled (à la place du chandelier) ----
+
+def neon(phase, allume):
+    """Le néon de la Bricotine : éteint (il grésille parfois), ou allumé."""
+    angle = 2 * math.sin(phase * TAU)
+    gresille = not allume and 0.80 < phase < 0.84
+    tube = "#ffffff" if allume else ("#c8d8e8" if gresille else "#5a5e6a")
+    lueur = ('<ellipse cx="32" cy="34" rx="34" ry="12" fill="#f0f8ff" opacity="0.35"/>' if allume else
+             '<ellipse cx="32" cy="34" rx="26" ry="6" fill="#c8d8e8" opacity="0.25"/>' if gresille else "")
+    toile = '' if allume else '<path d="M8 30 Q14 38 22 30" stroke="#aaaaaa" stroke-width="0.8" fill="none" opacity="0.6"/>'
+    return _svg((0, 0, 64, 64),
+                f'<g transform="rotate({angle:.1f} 32 0)">'
+                '<path d="M14 0 L14 26 M50 0 L50 26" stroke="#3a3a44" stroke-width="1.5"/>'
+                f'{lueur}<rect x="4" y="24" width="56" height="9" rx="2" fill="#6a6e78"/>'
+                f'<rect x="7" y="31" width="50" height="5" rx="2.5" fill="{tube}"/>{toile}</g>')
+
+
+def suspension(phase, allume):
+    """La suspension du foyer : éteinte et poussiéreuse, ou allumée, chaude."""
+    angle = 3 * math.sin(phase * TAU)
+    abat = "#c88a48" if allume else "#3a3440"
+    ampoule = "#fff2b0" if allume else "#55505a"
+    lueur = ('<ellipse cx="32" cy="46" rx="28" ry="16" fill="#ffd27a" opacity="0.35"/>' if allume else "")
+    toile = '' if allume else '<path d="M14 40 Q24 30 32 38" stroke="#aaaaaa" stroke-width="0.8" fill="none" opacity="0.6"/>'
+    return _svg((0, 0, 64, 64),
+                f'<g transform="rotate({angle:.1f} 32 0)">'
+                f'<path d="M32 0 L32 22" stroke="#2a2630" stroke-width="2"/>{lueur}'
+                f'<path d="M14 42 Q16 22 32 22 Q48 22 50 42 Z" fill="{abat}"/>'
+                f'<circle cx="32" cy="44" r="6" fill="{ampoule}"/>{toile}</g>')
+
+
+def projecteur(phase, allume):
+    """Un projecteur de la Tanière : éteint, ou allumé avec un faisceau de couleur."""
+    p = phase * TAU
+    angle = 12 * math.sin(p) if allume else -8
+    couleur = ("#ff8a1e", "#9b4dff", "#ff5aa0", "#4cd964")[int(phase * 4) % 4]
+    faisceau = (f'<path d="M26 36 L38 36 L58 64 L6 64 Z" fill="{couleur}" opacity="0.35"/>' if allume else "")
+    lentille = couleur if allume else "#30303a"
+    return _svg((0, 0, 64, 64),
+                '<path d="M32 0 L32 14" stroke="#2a2a30" stroke-width="3"/>'
+                '<path d="M20 14 L44 14 L44 20 L20 20 Z" fill="#2a2a30"/>'
+                f'<g transform="rotate({angle:.1f} 32 18)">{faisceau}'
+                '<rect x="23" y="16" width="18" height="20" rx="3" fill="#1e1e24"/>'
+                f'<ellipse cx="32" cy="36" rx="8" ry="3" fill="{lentille}"/></g>')
+
+
+def lampion(phase, allume):
+    """Le lampion de la terrasse : déchiré et éteint, ou rond et lumineux."""
+    angle = 6 * math.sin(phase * TAU)
+    if allume:
+        corps = ('<circle cx="32" cy="38" r="26" fill="#ffb040" opacity="0.25"/>'
+                 '<ellipse cx="32" cy="38" rx="18" ry="16" fill="#ff8a1e"/>'
+                 '<path d="M20 38 Q32 30 44 38 M18 44 Q32 52 46 44 M32 22 L32 54" stroke="#ffd27a" stroke-width="1.5" fill="none"/>'
+                 '<ellipse cx="32" cy="38" rx="7" ry="8" fill="#fff0b0" opacity="0.8"/>')
+    else:
+        corps = ('<path d="M16 34 Q18 22 32 22 Q46 22 46 34 L42 50 L36 44 L30 54 L22 46 Z" fill="#4a4450"/>'
+                 '<path d="M20 34 L44 34 M22 44 L40 42" stroke="#2a2630" stroke-width="1.2"/>')
+    return _svg((0, 0, 64, 64),
+                f'<g transform="rotate({angle:.1f} 32 0)">'
+                '<path d="M32 0 L32 22" stroke="#2a2630" stroke-width="1.5"/>'
+                '<rect x="26" y="20" width="12" height="4" fill="#2a2630"/>'
+                f'{corps}<rect x="27" y="52" width="10" height="3" fill="#2a2630"/></g>')
+
+
 # nom : (fabrique, images par cycle, cycles par seconde)
 ANIMES = {
     "vampire": (lambda ph: vampire(ph, "repos"), 16, 0.25),
@@ -523,5 +587,13 @@ ANIMES = {
     "bonbon": (bonbon, 16, 0.6),
     "couteau": (couteau, 1, 1.0),
     "chandelier_eteint": (chandelier_eteint, 12, 0.3),
+    "neon_eteint": (lambda ph: neon(ph, False), 25, 0.2),
+    "neon_allume": (lambda ph: neon(ph, True), 12, 0.3),
+    "suspension_eteinte": (lambda ph: suspension(ph, False), 12, 0.3),
+    "suspension_allumee": (lambda ph: suspension(ph, True), 12, 0.3),
+    "projecteur_eteint": (lambda ph: projecteur(ph, False), 1, 1.0),
+    "projecteur_allume": (lambda ph: projecteur(ph, True), 32, 0.25),
+    "lampion_eteint": (lambda ph: lampion(ph, False), 12, 0.4),
+    "lampion_allume": (lambda ph: lampion(ph, True), 12, 0.4),
     "courge": (courge, 16, 0.6),
 }

@@ -85,6 +85,8 @@ class Chose:
     def __init__(self, partie, genre, x, y):
         self.p, self.genre = partie, genre
         self.peur, self.fete, self.regle, self.message = GENRES[genre]
+        # chaque salle a ses propres lampes (néon, suspension, projecteur, lampion)
+        self.peur, self.fete = partie.niveau.get("objets", {}).get(genre, (self.peur, self.fete))
         self.w, self.h = TAILLES[self.peur]
         if genre in AU_SOL:
             y -= self.h / 2       # y donné = le sol ; on garde le centre
@@ -181,7 +183,7 @@ class Chose:
             return
         echelle = 1.0 + 0.35 * math.sin(self.pop / 0.5 * math.pi)
         angle, nom, gauche = 0.0, (self.fete if self.fetee else self.peur), self.dir < 0
-        if self.genre == "l":  # la chaîne du chandelier, depuis le plafond
+        if self.genre == "l":  # le fil de la lampe, depuis le plafond
             dessin.line(surf, (60, 60, 70), (x, HAUT_FRISE), (x, y - self.h / 2 + 2), 2)
         if self.fetee and self.genre in "fb":
             angle = 5 * math.sin(self.t * 2)
